@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind utilities;
+
+html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:#0b0b0f;color:#eef2f7}
+a{color:inherit;text-decoration:none}
+*{box-sizing:border-box}
+
+
