@@ -15,7 +15,18 @@ import {
   User
 } from 'lucide-react';
 
-const navigation = [
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface UserData {
+  name: string;
+  email: string;
+}
+
+const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Users', href: '/users', icon: Users },
   { name: 'Posts', href: '/posts', icon: FileText },
@@ -25,26 +36,38 @@ const navigation = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    // Get user info from localStorage or API
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Decode JWT to get user info (basic implementation)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ name: payload.name || 'Admin', email: payload.email || 'admin@bloocube.com' });
-      } catch (e) {
-        console.error('Error decoding token:', e);
+    // Check if we're in the browser environment before accessing localStorage
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // More robust JWT decoding with error handling
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setUser({ 
+            name: payload.name || 'Admin', 
+            email: payload.email || 'admin@bloocube.com' 
+          });
+        } catch (e) {
+          console.error('Error decoding token:', e);
+          // Set default user if token is invalid
+          setUser({ name: 'Admin', email: 'admin@bloocube.com' });
+        }
+      } else {
+        // Set default user if no token exists
+        setUser({ name: 'Admin', email: 'admin@bloocube.com' });
       }
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
     router.push('/login');
   };
 
@@ -69,7 +92,7 @@ export default function Navbar() {
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
+                    href={item.href as any} // Fix: Type assertion to resolve the type conflict
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                       isActive
                         ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
@@ -87,7 +110,10 @@ export default function Navbar() {
           {/* Right side */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all">
+            <button 
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
+              aria-label="Notifications"
+            >
               <Bell className="w-5 h-5" />
             </button>
 
@@ -108,6 +134,7 @@ export default function Navbar() {
                 onClick={handleLogout}
                 className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                 title="Logout"
+                aria-label="Logout"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -117,6 +144,8 @@ export default function Navbar() {
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
+              aria-label="Toggle menu"
+              aria-expanded={isOpen}
             >
               {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -133,7 +162,7 @@ export default function Navbar() {
                 return (
                   <Link
                     key={item.name}
-                    href={item.href}
+                    href={item.href as any} // Fix: Type assertion to resolve the type conflict
                     onClick={() => setIsOpen(false)}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                       isActive
