@@ -40,6 +40,9 @@ export const adminApi = {
     return apiRequest<{ success: boolean; data: { users: any[] } }>(`/api/admin/users${qs ? `?${qs}` : ''}`);
   },
   toggleUser: (id: string) => apiRequest<{ success: boolean; data: { user: any } }>(`/api/admin/users/${id}/toggle`, { method: 'PATCH' }),
+  createUser: (payload: { name: string; email: string; password: string; role: 'creator'|'brand'|'admin' }) =>
+    apiRequest<{ success: boolean; data: { user: any } }>(`/api/admin/users`, { method: 'POST', body: JSON.stringify(payload) }),
+  deleteUser: (id: string) => apiRequest<{ success: boolean; data: { id: string } }>(`/api/admin/users/${id}`, { method: 'DELETE' }),
 
   // Campaigns (placeholder for posts)
   listCampaigns: () => apiRequest<{ success: boolean; data: { campaigns: any[] } }>(`/api/admin/campaigns`),

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { Users, Search, Filter, RefreshCw, UserCheck, UserX, Mail, Calendar } from 'lucide-react';
+import { Users, Search, Filter, RefreshCw, UserCheck, UserX, Mail, Calendar, Plus, Trash2, X } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -21,6 +21,9 @@ export default function UsersPage(){
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newUser, setNewUser] = useState<{ name: string; email: string; password: string; role: 'creator' | 'brand' | 'admin' }>({ name: '', email: '', password: '', role: 'creator' });
 
   const loadUsers = async () => {
     try {
@@ -50,6 +53,31 @@ export default function UsersPage(){
       await loadUsers(); // Refresh the list
     } catch (e: any) {
       setError(e.message || 'Failed to toggle user status');
+    }
+  };
+
+  const createUser = async () => {
+    try {
+      setError(null);
+      setCreating(true);
+      await adminApi.createUser(newUser);
+      setNewUser({ name: '', email: '', password: '', role: 'creator' });
+      setShowCreate(false);
+      await loadUsers();
+    } catch (e: any) {
+      setError(e.message || 'Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const deleteUser = async (id: string) => {
+    try {
+      setError(null);
+      await adminApi.deleteUser(id);
+      await loadUsers();
+    } catch (e: any) {
+      setError(e.message || 'Failed to delete user');
     }
   };
 
@@ -99,9 +127,19 @@ export default function UsersPage(){
             </div>
           )}
 
-          {/* Filters */}
+          {/* Create User & Filters */}
           <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Trigger Create User Modal */}
+              <div className="md:col-span-1">
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="w-full px-4 py-3 bg-violet-600 hover:bg-violet-700 rounded-lg text-white flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create User
+                </button>
+              </div>
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -217,16 +255,24 @@ export default function UsersPage(){
                             {new Date(user.createdAt).toLocaleDateString()}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 flex items-center gap-2">
                           <button
                             onClick={() => toggleUser(user._id)}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                            className={`px-3 py-2 text-xs font-medium rounded-lg transition-all ${
                               user.isActive
                                 ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/30'
                                 : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border border-emerald-500/30'
                             }`}
                           >
                             {user.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            onClick={() => deleteUser(user._id)}
+                            className="px-3 py-2 text-xs font-medium rounded-lg transition-all bg-slate-700/20 text-slate-300 hover:bg-slate-700/30 border border-slate-600/30 flex items-center gap-1"
+                            title="Delete user"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -245,6 +291,56 @@ export default function UsersPage(){
           </div>
         </div>
       </main>
+      {/* Create User Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !creating && setShowCreate(false)} />
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Create New User</h2>
+              <button onClick={() => !creating && setShowCreate(false)} className="p-2 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <input
+                type="text"
+                placeholder="Name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
+                className="px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50"
+              >
+                <option value="creator">Creator</option>
+                <option value="brand">Brand</option>
+                <option value="admin">Admin</option>
+              </select>
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <button onClick={() => setShowCreate(false)} disabled={creating} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</button>
+                <button onClick={createUser} disabled={creating || !newUser.name || !newUser.email || !newUser.password} className="px-4 py-2 rounded-lg bg-violet-600 text-white disabled:opacity-50">
+                  {creating ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

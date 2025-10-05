@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Settings, Save, Key, Mail, Database, Shield, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
+import { Settings, Save, Key, Mail, Database, Shield, AlertCircle, CheckCircle, RefreshCw, Plus, X } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -39,6 +39,9 @@ export default function SettingsPage(){
   const [error, setError] = useState<string|null>(null);
   const [success, setSuccess] = useState<string|null>(null);
   const [activeTab, setActiveTab] = useState('api');
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUser, setNewUser] = useState<{ name: string; email: string; password: string; role: 'creator' | 'brand' | 'admin' }>({ name: '', email: '', password: '', role: 'creator' });
 
   const loadSettings = async () => {
     try {
@@ -63,6 +66,22 @@ export default function SettingsPage(){
   useEffect(() => {
     loadSettings();
   }, []);
+
+  const submitCreateUser = async () => {
+    try {
+      setError(null);
+      setCreatingUser(true);
+      await adminApi.createUser(newUser);
+      setNewUser({ name: '', email: '', password: '', role: 'creator' });
+      setShowCreateUser(false);
+      setSuccess('User created successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e: any) {
+      setError(e.message || 'Failed to create user');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
 
   const saveSettings = async () => {
     try {
@@ -111,6 +130,13 @@ export default function SettingsPage(){
                 </h1>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowCreateUser(true)}
+                  className="px-4 py-2 bg-slate-800/60 hover:bg-slate-800 text-white rounded-lg transition-all flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create User
+                </button>
                 <button
                   onClick={loadSettings}
                   disabled={loading}
@@ -337,6 +363,56 @@ export default function SettingsPage(){
           </div>
         </div>
       </main>
+      {/* Create User Modal */}
+      {showCreateUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !creatingUser && setShowCreateUser(false)} />
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Create New User</h2>
+              <button onClick={() => !creatingUser && setShowCreateUser(false)} className="p-2 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <input
+                type="text"
+                placeholder="Name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
+              />
+              <select
+                value={newUser.role}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
+                className="px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50"
+              >
+                <option value="creator">Creator</option>
+                <option value="brand">Brand</option>
+                <option value="admin">Admin</option>
+              </select>
+              <div className="flex items-center justify-end gap-2 mt-2">
+                <button onClick={() => setShowCreateUser(false)} disabled={creatingUser} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</button>
+                <button onClick={submitCreateUser} disabled={creatingUser || !newUser.name || !newUser.email || !newUser.password} className="px-4 py-2 rounded-lg bg-violet-600 text-white disabled:opacity-50">
+                  {creatingUser ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }
