@@ -1,5 +1,5 @@
 export const adminConfig = {
-  apiUrl: process.env.NEXT_PUBLIC_ADMIN_API_URL || 'http://localhost:5000',
+  apiUrl: process.env.NEXT_PUBLIC_ADMIN_API_URL,
 };
 
 function getToken(): string | null {
