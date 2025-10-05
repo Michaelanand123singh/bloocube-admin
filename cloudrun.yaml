@@ -1,0 +1,36 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: bloocube-admin
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/client-name: cloud-console
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "5"
+        run.googleapis.com/cpu-throttling: "true"
+    spec:
+      containers:
+        - image: gcr.io/PROJECT_ID/bloocube-admin:latest
+          ports:
+            - name: http1
+              containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: NEXT_PUBLIC_ADMIN_API_URL
+              value: https://YOUR_BACKEND_HOST
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 10

@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+.next/cache
+.out
+.git
+.gitignore
+Dockerfile
+cloudrun.yaml
+deploy.sh
+.env
+.env.*
+*.local
+*.log
+.vscode
+.idea
+coverage
