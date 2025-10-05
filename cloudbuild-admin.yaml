@@ -1,14 +1,25 @@
 # Cloud Build config to build and deploy bloocube-admin to Cloud Run
 # Configure your Cloud Build trigger to use this file and set substitutions.
 # Required substitutions:
-#  _REGION: e.g. us-central1
-#  _SERVICE: bloocube-adminwafinwaf
-#  _ADMIN_API_URL: e.g. https://your-backend-host
+#  _REGION: e.g. asia-southeast1
+#  _SERVICE: bloocube-admin
+#  _NEXT_PUBLIC_ADMIN_API_URL: e.g. https://api-backend.bloocube.com
+
+substitutions:
+  _REGION: asia-southeast1
+  _SERVICE: bloocube-admin
+  _NEXT_PUBLIC_ADMIN_API_URL: https://api-backend.bloocube.com
 
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
-      ["build", "-t", "gcr.io/$PROJECT_ID/${_SERVICE}:$SHORT_SHA", "-f", "bloocube-admin/Dockerfile", "bloocube-admin"]
+      [
+        "build",
+        "-t", "gcr.io/$PROJECT_ID/${_SERVICE}:$SHORT_SHA",
+        "-f", "bloocube-admin/Dockerfile",
+        "--build-arg", "NEXT_PUBLIC_ADMIN_API_URL=${_NEXT_PUBLIC_ADMIN_API_URL}",
+        "bloocube-admin"
+      ]
 
   - name: gcr.io/cloud-builders/docker
     args: ["push", "gcr.io/$PROJECT_ID/${_SERVICE}:$SHORT_SHA"]
@@ -23,8 +34,7 @@ steps:
         "--platform", "managed",
         "--allow-unauthenticated",
         "--port", "8080",
-        "--set-env-vars", "NODE_ENV=production",
-        "--set-env-vars", "NEXT_PUBLIC_ADMIN_API_URL=${NEXT_PUBLIC_ADMIN_API_URL}"
+        "--set-env-vars", "NODE_ENV=production,NEXT_PUBLIC_ADMIN_API_URL=${_NEXT_PUBLIC_ADMIN_API_URL}"
       ]
 
 images:
