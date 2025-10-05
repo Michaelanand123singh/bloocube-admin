@@ -12,6 +12,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Next requires this to be set at build time for certain features
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_ADMIN_API_URL
+ENV NEXT_PUBLIC_ADMIN_API_URL=${NEXT_PUBLIC_ADMIN_API_URL}
 RUN npm run build
 
 FROM node:20-alpine AS runner
