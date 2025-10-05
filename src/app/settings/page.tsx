@@ -44,29 +44,13 @@ export default function SettingsPage(){
     try {
       setError(null);
       setLoading(true);
-      // TODO: Implement settings endpoint in backend
-      // const response = await adminApi.getSettings();
-      // setSettings(response.data);
-      
-      // Mock data for now
+      const response = await adminApi.getSettings();
+      const data = response.data || {};
       setSettings({
-        apiKeys: {
-          twitter: '••••••••••••••••',
-          linkedin: '••••••••••••••••',
-          google: '••••••••••••••••'
-        },
-        email: {
-          host: 'smtp.gmail.com',
-          port: 587,
-          user: 'admin@bloocube.com',
-          from: 'noreply@bloocube.com'
-        },
-        database: {
-          maxConnections: 10
-        },
-        security: {
-          sessionTimeout: 3600
-        }
+        apiKeys: data.apiKeys || {},
+        email: data.email || {},
+        database: data.database || {},
+        security: data.security || {}
       });
     } catch (e: any) {
       setError(e.message || 'Failed to load settings');
@@ -84,11 +68,7 @@ export default function SettingsPage(){
     try {
       setError(null);
       setSaving(true);
-      // TODO: Implement settings save endpoint in backend
-      // await adminApi.saveSettings(settings);
-      
-      // Mock save for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await adminApi.saveSettings(settings);
       setSuccess('Settings saved successfully');
       setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {

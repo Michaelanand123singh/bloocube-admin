@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import Navbar from '@/components/layout/Navbar';
+import Layout from '@/components/layout/Layout';
 import { adminApi } from '@/lib/api';
 
 export default function CampaignsPage() {
@@ -24,9 +24,8 @@ export default function CampaignsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <Layout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-slate-100">
         <h1 className="text-2xl font-semibold mb-4">Campaigns</h1>
         {loading && <div className="text-sm text-slate-400">Loading...</div>}
         {error && <div className="text-sm text-red-400">{error}</div>}
@@ -61,7 +60,7 @@ export default function CampaignsPage() {
             </table>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

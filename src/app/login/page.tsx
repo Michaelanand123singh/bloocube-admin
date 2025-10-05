@@ -31,18 +31,23 @@ export default function LoginPage(){
       const nextPath = (searchParams.get('next') || '/dashboard') as any;
       router.replace(nextPath);
     } catch (err:any) {
-      // Dev fallback: if backend is not available, allow local admin sign-in
-      try {
-        if (email && password) {
-          const devUser = { id: 'dev-admin', name: 'Dev Admin', email, role: 'admin' };
-          const devToken = 'dev-admin-token';
-          localStorage.setItem('token', devToken);
-          localStorage.setItem('user', JSON.stringify(devUser));
-          const nextPath = (searchParams.get('next') || '/dashboard') as any;
-          router.replace(nextPath);
-          return;
-        }
-      } catch {}
+      // Optional dev fallback behind env flag
+      const allowDevLogin = process.env.NEXT_PUBLIC_ALLOW_DEV_ADMIN_LOGIN === 'true';
+      if (allowDevLogin) {
+        try {
+          if (email && password) {
+            const devUser = { id: 'dev-admin', name: 'Dev Admin', email, role: 'admin' };
+            // Use a minimal fake JWT-like structure to avoid decoding errors in Navbar
+            const payload = btoa(JSON.stringify({ name: devUser.name, email: devUser.email, role: devUser.role }));
+            const devToken = `fake.${payload}.sig`;
+            localStorage.setItem('token', devToken);
+            localStorage.setItem('user', JSON.stringify(devUser));
+            const nextPath = (searchParams.get('next') || '/dashboard') as any;
+            router.replace(nextPath);
+            return;
+          }
+        } catch {}
+      }
       setError(err.message || 'Login failed');
     }
   };

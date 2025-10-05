@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Navbar from './Navbar';
+import Sidebar from './Sidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -51,9 +52,12 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-slate-950">
       <Navbar />
-      <main className="relative">
-        {children}
-      </main>
+      <div className="relative flex">
+        <Sidebar />
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

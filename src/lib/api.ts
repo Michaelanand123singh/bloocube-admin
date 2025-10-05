@@ -46,6 +46,13 @@ export const adminApi = {
 
   // Logs
   getLogs: () => apiRequest<{ success: boolean; data: any }>(`/api/admin/logs`),
+
+  // Settings
+  getSettings: () => apiRequest<{ success: boolean; data: any }>(`/api/admin/settings`),
+  saveSettings: (data: any) => apiRequest<{ success: boolean; data: any }>(`/api/admin/settings`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
 };
 
 
