@@ -29,6 +29,7 @@ interface UserData {
 const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Users', href: '/users', icon: Users },
+  { name: 'Campaigns', href: '/campaigns', icon: FileText },
   { name: 'Posts', href: '/posts', icon: FileText },
   { name: 'Logs', href: '/logs', icon: Activity },
   { name: 'Settings', href: '/settings', icon: Settings },
