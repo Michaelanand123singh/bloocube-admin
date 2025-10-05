@@ -24,7 +24,7 @@ steps:
         "--allow-unauthenticated",
         "--port", "8080",
         "--set-env-vars", "NODE_ENV=production",
-        "--set-env-vars", "NEXT_PUBLIC_ADMIN_API_URL=${_ADMIN_API_URL}"
+        "--set-env-vars", "NEXT_PUBLIC_ADMIN_API_URL=${NEXT_PUBLIC_ADMIN_API_URL}"
       ]
 
 images:
