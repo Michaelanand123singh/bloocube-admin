@@ -22,7 +22,7 @@ spec:
             - name: NODE_ENV
               value: production
             - name: NEXT_PUBLIC_ADMIN_API_URL
-              value: https://YOUR_BACKEND_HOST
+              value: https://api-backend.bloocube.com
           resources:
             limits:
               cpu: 1000m
