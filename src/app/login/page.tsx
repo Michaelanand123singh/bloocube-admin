@@ -1,9 +1,9 @@
 "use client";
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminConfig } from '@/lib/api';
 
-export default function LoginPage(){
+function LoginPageInner(){
   const [email,setEmail] = useState('');
   const [password,setPassword] = useState('');
   const [error,setError] = useState<string|null>(null);
@@ -67,4 +67,10 @@ export default function LoginPage(){
   )
 }
 
-
+export default function LoginPage(){
+  return (
+    <Suspense fallback={<main style={{display:'grid',placeItems:'center',minHeight:'100dvh'}}><div style={{color:'#9aa4b2'}}>Loading...</div></main>}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
