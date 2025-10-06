@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { Users, Target, Gavel, BarChart3, TrendingUp, Activity, RefreshCw } from 'lucide-react';
+import { Users, Target, Gavel, BarChart3, TrendingUp, Activity, RefreshCw, Cpu, Server, LineChart } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -9,12 +9,61 @@ export default function DashboardPage(){
   const [error, setError] = useState<string|null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [topPosts, setTopPosts] = useState<any[] | null>(null);
+  const [platformStats, setPlatformStats] = useState<Record<string, any> | null>(null);
+  const [aiStatus, setAiStatus] = useState<any | null>(null);
+  const [period, setPeriod] = useState<'last_7_days'|'last_30_days'|'last_90_days'>('last_30_days');
+  const [recentUsers, setRecentUsers] = useState<any[] | null>(null);
+  const [recentCampaigns, setRecentCampaigns] = useState<any[] | null>(null);
+  const [systemLogs, setSystemLogs] = useState<any[] | null>(null);
+  const [aiLogs, setAiLogs] = useState<any | null>(null);
 
   const fetchStats = async () => {
     try {
       setError(null);
-      const response = await adminApi.getStats();
-      setStats(response.data);
+
+      const withRetry = async <T,>(fn: () => Promise<T>, attempts = 2): Promise<T> => {
+        try { return await fn(); } catch (err: any) {
+          const msg = String(err?.message || '');
+          if (attempts > 1 && (msg.includes('Too many requests') || msg.includes('429'))) {
+            await new Promise(r => setTimeout(r, 1000));
+            return withRetry(fn, attempts - 1);
+          }
+          throw err;
+        }
+      };
+
+      // Fetch critical stats first
+      const statsRes = await withRetry(() => adminApi.getStats());
+      setStats(statsRes.data);
+
+      // Fetch the rest in parallel, but don't fail the whole page
+      const results = await Promise.allSettled([
+        withRetry(() => adminApi.getTopPosts(5, period)),
+        withRetry(() => adminApi.getPlatformStats('youtube', period)),
+        withRetry(() => adminApi.getPlatformStats('linkedin', period)),
+        withRetry(() => adminApi.getAIProvidersStatus()),
+        withRetry(() => adminApi.listUsers()),
+        withRetry(() => adminApi.listCampaigns()),
+        withRetry(() => adminApi.getLogs(20)),
+        withRetry(() => adminApi.getAIProviderLogs({ limit: 10 }))
+      ]);
+
+      const [topRes, ytRes, liRes, aiRes, usersRes, campaignsRes, logsRes, aiLogsRes] = results;
+
+      if (topRes.status === 'fulfilled') setTopPosts(topRes.value.data?.posts || []);
+      if (ytRes.status === 'fulfilled' || liRes.status === 'fulfilled') {
+        setPlatformStats({
+          youtube: ytRes.status === 'fulfilled' ? (ytRes.value.data?.stats || {}) : (platformStats?.youtube || {}),
+          linkedin: liRes.status === 'fulfilled' ? (liRes.value.data?.stats || {}) : (platformStats?.linkedin || {})
+        });
+      }
+      if (aiRes.status === 'fulfilled') setAiStatus(aiRes.value.data);
+      if (usersRes.status === 'fulfilled') setRecentUsers(usersRes.value.data?.users?.slice(0,5) || []);
+      if (campaignsRes.status === 'fulfilled') setRecentCampaigns(campaignsRes.value.data?.campaigns?.slice(0,5) || []);
+      if (logsRes.status === 'fulfilled') setSystemLogs(logsRes.value.data || []);
+      if (aiLogsRes.status === 'fulfilled') setAiLogs(aiLogsRes.value.data || null);
+
       setLastUpdated(new Date());
     } catch (e: any) {
       setError(e.message || 'Failed to fetch dashboard stats');
@@ -26,12 +75,9 @@ export default function DashboardPage(){
 
   useEffect(() => {
     fetchStats();
-    
-    // Set up real-time updates every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
-    
+    const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [period]);
 
   return (
     <Layout>
@@ -49,6 +95,23 @@ export default function DashboardPage(){
                 </h1>
               </div>
               <div className="flex items-center gap-4">
+                <div className="bg-slate-900/40 border border-slate-800/60 rounded-lg p-1">
+                  <div className="flex items-center gap-1">
+                    {([
+                      { key: 'last_7_days', label: '7d' },
+                      { key: 'last_30_days', label: '30d' },
+                      { key: 'last_90_days', label: '90d' }
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => setPeriod(opt.key)}
+                        className={`text-xs px-2 py-1 rounded-md transition-colors ${period === opt.key ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="text-sm text-slate-400">
                   Last updated: {lastUpdated.toLocaleTimeString()}
                 </div>
@@ -120,21 +183,205 @@ export default function DashboardPage(){
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
             <MetricCard 
               label="Avg. Campaign Size"
-              value={Math.round(stats.bids / stats.campaigns)}
+              value={stats.campaigns ? Math.round(stats.bids / stats.campaigns) : 0}
               suffix=" bids"
             />
             <MetricCard 
               label="User Engagement"
-              value={Math.round((stats.analytics / stats.users) * 10) / 10}
+              value={stats.users ? Math.round((stats.analytics / stats.users) * 10) / 10 : 0}
               suffix=" events/user"
             />
             <MetricCard 
               label="Platform Activity"
-              value="High"
-              trend="+12.5%"
+              value={stats.analytics > 0 ? 'High' : 'Low'}
+              trend={stats.analytics > 0 ? '+12.5%' : undefined}
             />
           </div>
         )}
+
+        {/* Charts and Tables */}
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Top Posts */}
+          <div className="lg:col-span-2 bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-slate-200">
+                <LineChart className="w-5 h-5 text-cyan-400" />
+                <h2 className="text-lg font-semibold">Top Performing Posts</h2>
+              </div>
+              <div className="text-sm text-slate-500">Last 30 days</div>
+            </div>
+            {!topPosts && <div className="text-slate-500 text-sm">No data</div>}
+            {topPosts && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-slate-400">
+                      <th className="text-left font-medium py-2 pr-4">Title</th>
+                      <th className="text-left font-medium py-2 pr-4">Platform</th>
+                      <th className="text-right font-medium py-2 pr-0">Engagement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topPosts.map((p: any, idx: number) => (
+                      <tr key={idx} className="border-t border-slate-800/50">
+                        <td className="py-2 pr-4 text-slate-200">{p.title || p.post_title || 'Untitled'}</td>
+                        <td className="py-2 pr-4 text-slate-400">{p.platform || p.metrics?.platform || '—'}</td>
+                        <td className="py-2 pr-0 text-right text-slate-200">{(p.metrics?.engagement || p.engagement || 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* AI Providers Status */}
+          <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+            <div className="flex items-center gap-2 text-slate-200 mb-4">
+              <Cpu className="w-5 h-5 text-violet-400" />
+              <h2 className="text-lg font-semibold">AI Providers</h2>
+            </div>
+            {!aiStatus && <div className="text-slate-500 text-sm">No status</div>}
+            {aiStatus && (
+              <div className="space-y-3">
+                {(Array.isArray(aiStatus?.providers) ? aiStatus.providers : Object.entries(aiStatus || {})).slice(0,4).map((p: any, idx: number) => {
+                  const provider = Array.isArray(aiStatus?.providers) ? p : { name: p[0], status: p[1]?.status };
+                  const isUp = (provider.status || provider.health || 'up') === 'up';
+                  return (
+                    <div key={idx} className="flex items-center justify-between">
+                      <div className="text-slate-300">{provider.name || provider.provider || 'Provider'}</div>
+                      <div className={`text-xs font-medium ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>{isUp ? 'Healthy' : 'Down'}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Platform Stats */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Simple inline bar charts using CSS widths */}
+          {platformStats && (
+            <>
+              <PlatformStatsCard platform="YouTube" icon={<Server className="w-4 h-4 text-red-400" />} stats={platformStats.youtube} />
+              <PlatformStatsCard platform="LinkedIn" icon={<Server className="w-4 h-4 text-blue-400" />} stats={platformStats.linkedin} />
+            </>
+          )}
+        </div>
+
+        {/* Overview Metrics inspired by image */}
+        <div className="mt-10">
+          <div className="text-xl font-semibold text-slate-200 mb-4">Overview Metrics</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <OverviewCard title="Total Users" value={stats?.users || 0} sub="since last month" />
+            <OverviewCard title="Active Users" value={(recentUsers || []).filter(u => u?.isActive !== false).length} sub="since last week" />
+            <OverviewCard title="Total Posts" value={(topPosts || []).length + (platformStats?.youtube?.totalPosts || 0)} sub="since last month" />
+            <OverviewCard title="Success Rate" value={computeSuccessRate(aiLogs)} sub="vs last month" percent />
+          </div>
+        </div>
+
+        {/* Post Activity & Performance */}
+        <div className="mt-8">
+          <div className="text-xl font-semibold text-slate-200 mb-4">Post Activity & Performance</div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SimpleLineChart title="Posts Over Time" series={buildPostsTimeSeries(aiLogs)} />
+            <SimpleBarChart title="Post Success vs. Failure" bars={buildSuccessFailure(aiLogs)} />
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8">
+          <div className="text-slate-200 font-semibold mb-3">Quick Actions</div>
+          <div className="flex flex-wrap gap-3">
+            <a href="/users" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/40 border border-slate-800/60 text-slate-200 hover:border-slate-700/60">
+              <Users className="w-4 h-4" /> Manage Users
+            </a>
+            <a href="/campaigns" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/40 border border-slate-800/60 text-slate-200 hover:border-slate-700/60">
+              <Gavel className="w-4 h-4" /> Manage Posts
+            </a>
+          </div>
+        </div>
+
+        {/* Recent Users and Campaigns */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-slate-200 font-semibold">Recent Users</div>
+              <a href="/users" className="text-xs text-slate-400 hover:text-white">View all</a>
+            </div>
+            {!recentUsers && <div className="text-slate-500 text-sm">No data</div>}
+            {recentUsers && (
+              <ul className="divide-y divide-slate-800/60">
+                {recentUsers.map((u: any) => (
+                  <li key={u._id} className="py-2 flex items-center justify-between">
+                    <div className="text-slate-300">{u.name || u.email}</div>
+                    <div className="text-xs text-slate-500">{u.role}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-slate-200 font-semibold">Recent Campaigns</div>
+              <a href="/campaigns" className="text-xs text-slate-400 hover:text-white">View all</a>
+            </div>
+            {!recentCampaigns && <div className="text-slate-500 text-sm">No data</div>}
+            {recentCampaigns && (
+              <ul className="divide-y divide-slate-800/60">
+                {recentCampaigns.map((c: any) => (
+                  <li key={c._id} className="py-2">
+                    <div className="text-slate-300">{c.title || c.name || 'Untitled Campaign'}</div>
+                    <div className="text-xs text-slate-500">{c.status || '—'}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Logs */}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-slate-200 font-semibold">System Logs</div>
+              <a href="/logs" className="text-xs text-slate-400 hover:text-white">View all</a>
+            </div>
+            {!systemLogs && <div className="text-slate-500 text-sm">No data</div>}
+            {systemLogs && (
+              <div className="max-h-64 overflow-auto text-xs">
+                {systemLogs.map((l: any, idx: number) => (
+                  <div key={idx} className="py-1 border-b border-slate-800/40">
+                    <span className="text-slate-500">[{new Date(l.timestamp).toLocaleTimeString()}]</span>{' '}
+                    <span className={`${l.level === 'error' ? 'text-red-400' : 'text-slate-300'}`}>{l.level?.toUpperCase() || 'INFO'}</span>{' '}
+                    <span className="text-slate-300">{l.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-slate-200 font-semibold">AI Provider Logs</div>
+              <a href="/logs" className="text-xs text-slate-400 hover:text-white">View all</a>
+            </div>
+            {!aiLogs && <div className="text-slate-500 text-sm">No data</div>}
+            {aiLogs && (
+              <div className="max-h-64 overflow-auto text-xs">
+                {(aiLogs.logs || aiLogs.data?.logs || []).map((l: any, idx: number) => (
+                  <div key={idx} className="py-1 border-b border-slate-800/40">
+                    <span className="text-slate-500">[{new Date(l.timestamp).toLocaleTimeString()}]</span>{' '}
+                    <span className="text-slate-400">{l.provider}</span>{' '}
+                    <span className="text-slate-300">{l.operation}</span>{' '}
+                    <span className="text-slate-500">{l.model}</span>{' '}
+                    <span className="text-slate-400">{l.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         </div>
       </main>
     </Layout>
@@ -209,4 +456,124 @@ function MetricCard({label, value, suffix, trend}:{
       </div>
     </div>
   )
+}
+
+function PlatformStatsCard({ platform, icon, stats }:{ platform:string; icon:React.ReactNode; stats:any }){
+  const bars: Array<{ label: string; value: number; color: string }> = [
+    { label: 'Views', value: Number(stats?.totalViews || stats?.views || 0), color: 'bg-emerald-500' },
+    { label: 'Likes', value: Number(stats?.totalLikes || stats?.likes || 0), color: 'bg-violet-500' },
+    { label: 'Comments', value: Number(stats?.totalComments || stats?.comments || 0), color: 'bg-cyan-500' },
+    { label: 'Shares', value: Number(stats?.totalShares || stats?.shares || 0), color: 'bg-amber-500' },
+  ];
+  const max = Math.max(1, ...bars.map(b => b.value));
+  return (
+    <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+      <div className="flex items-center gap-2 text-slate-200 mb-4">
+        {icon}
+        <h3 className="text-lg font-semibold">{platform} Stats</h3>
+      </div>
+      <div className="space-y-3">
+        {bars.map((b) => (
+          <div key={b.label}>
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+              <span>{b.label}</span>
+              <span>{b.value.toLocaleString()}</span>
+            </div>
+            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className={`h-full ${b.color}`} style={{ width: `${Math.round((b.value / max) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OverviewCard({ title, value, sub, percent }:{ title:string; value:number; sub?:string; percent?:boolean }){
+  return (
+    <div className="bg-white/5 border border-slate-800/60 rounded-2xl p-4">
+      <div className="text-slate-400 text-xs mb-1">{title}</div>
+      <div className="text-2xl font-bold text-slate-100">{percent ? `${value}%` : value.toLocaleString()}</div>
+      {sub && <div className="text-slate-500 text-xs mt-1">{sub}</div>}
+    </div>
+  )
+}
+
+function SimpleLineChart({ title, series }:{ title:string; series: Array<{ label:string; value:number }> }){
+  const max = Math.max(1, ...series.map(s => s.value));
+  return (
+    <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+      <div className="text-slate-200 font-semibold mb-4">{title}</div>
+      <div className="space-y-4">
+        {series.map((s) => (
+          <div key={s.label} className="flex items-center gap-3">
+            <div className="w-10 text-xs text-slate-500">{s.label}</div>
+            <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-cyan-500" style={{ width: `${Math.round((s.value / max) * 100)}%` }} />
+            </div>
+            <div className="w-12 text-right text-xs text-slate-400">{s.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SimpleBarChart({ title, bars }:{ title:string; bars: Array<{ label:string; success:number; failed:number }> }){
+  const max = Math.max(1, ...bars.map(b => b.success + b.failed));
+  return (
+    <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+      <div className="text-slate-200 font-semibold mb-4">{title}</div>
+      <div className="space-y-3">
+        {bars.map((b) => (
+          <div key={b.label}>
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+              <span>{b.label}</span>
+              <span>{b.success + b.failed}</span>
+            </div>
+            <div className="h-4 bg-slate-800 rounded-md overflow-hidden flex">
+              <div className="bg-emerald-500" style={{ width: `${Math.round((b.success / max) * 100)}%` }} />
+              <div className="bg-red-500" style={{ width: `${Math.round((b.failed / max) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function computeSuccessRate(aiLogs: any): number {
+  const list = (aiLogs?.logs || aiLogs?.data?.logs || []) as any[];
+  if (!list.length) return 0;
+  const success = list.filter(l => l.status === 'success').length;
+  return Math.round((success / list.length) * 1000) / 10;
+}
+
+function buildPostsTimeSeries(aiLogs: any): Array<{ label:string; value:number }> {
+  const list = (aiLogs?.logs || aiLogs?.data?.logs || []) as any[];
+  const byMonth = new Map<string, number>();
+  for (const l of list) {
+    const d = new Date(l.timestamp);
+    const key = d.toLocaleString(undefined, { month: 'short' });
+    byMonth.set(key, (byMonth.get(key) || 0) + 1);
+  }
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months.map(m => ({ label: m, value: byMonth.get(m) || 0 })).slice(0, 6);
+}
+
+function buildSuccessFailure(aiLogs: any): Array<{ label:string; success:number; failed:number }> {
+  const list = (aiLogs?.logs || aiLogs?.data?.logs || []) as any[];
+  const byMonth = new Map<string, { s:number; f:number }>();
+  for (const l of list) {
+    const d = new Date(l.timestamp);
+    const key = d.toLocaleString(undefined, { month: 'short' });
+    const prev = byMonth.get(key) || { s: 0, f: 0 };
+    if (l.status === 'success') prev.s += 1; else prev.f += 1;
+    byMonth.set(key, prev);
+  }
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months.map(m => {
+    const v = byMonth.get(m) || { s: 0, f: 0 };
+    return { label: m, success: v.s, failed: v.f };
+  }).slice(0, 6);
 }

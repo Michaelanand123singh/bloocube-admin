@@ -48,7 +48,7 @@ export const adminApi = {
   listCampaigns: () => apiRequest<{ success: boolean; data: { campaigns: any[] } }>(`/api/admin/campaigns`),
 
   // Logs
-  getLogs: () => apiRequest<{ success: boolean; data: any }>(`/api/admin/logs`),
+  getLogs: (limit: number = 50) => apiRequest<{ success: boolean; data: any[] }>(`/api/admin/logs?limit=${limit}`),
 
   // Settings
   getSettings: () => apiRequest<{ success: boolean; data: any }>(`/api/admin/settings`),
@@ -56,6 +56,41 @@ export const adminApi = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
+
+  // Analytics
+  getTopPosts: (limit: number = 10, period?: 'last_7_days'|'last_30_days'|'last_90_days') => {
+    const search = new URLSearchParams();
+    search.set('limit', String(limit));
+    if (period) search.set('period', period);
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; data: { posts: any[] } }>(`/api/analytics/top${qs ? `?${qs}` : ''}`);
+  },
+  getPlatformStats: (platform: string, period?: 'last_7_days'|'last_30_days'|'last_90_days') => {
+    const qs = period ? `?period=${encodeURIComponent(period)}` : '';
+    return apiRequest<{ success: boolean; data: { stats: any } }>(`/api/analytics/platform/${platform}${qs}`);
+  },
+  getUserAnalytics: (userId: string, platform?: string) => {
+    const qs = platform ? `?platform=${encodeURIComponent(platform)}` : '';
+    return apiRequest<{ success: boolean; data: { analytics: any[] } }>(`/api/analytics/user/${userId}${qs}`);
+  },
+
+  // AI Providers (admin)
+  getAIProvidersStatus: () =>
+    apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/status`),
+  getAIProvidersHealth: () =>
+    apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/health`),
+  getAIAvailableModels: (provider?: string) => {
+    const qs = provider ? `?provider=${encodeURIComponent(provider)}` : '';
+    return apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/models${qs}`);
+  },
+  getAIProviderLogs: (params?: { provider?: string; limit?: number; offset?: number }) => {
+    const search = new URLSearchParams();
+    if (params?.provider) search.set('provider', params.provider);
+    if (params?.limit != null) search.set('limit', String(params.limit));
+    if (params?.offset != null) search.set('offset', String(params.offset));
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/logs${qs ? `?${qs}` : ''}`);
+  }
 };
 
 
