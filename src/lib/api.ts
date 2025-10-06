@@ -46,9 +46,31 @@ export const adminApi = {
 
   // Campaigns (placeholder for posts)
   listCampaigns: () => apiRequest<{ success: boolean; data: { campaigns: any[] } }>(`/api/admin/campaigns`),
+  // Posts (admin can fetch all via /api/posts with query)
+  listPosts: (params?: { page?: number; limit?: number; status?: string; platform?: string; search?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.status) search.set('status', params.status);
+    if (params?.platform) search.set('platform', params.platform);
+    if (params?.search) search.set('search', params.search);
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; posts: any[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/api/posts${qs ? `?${qs}` : ''}`);
+  },
+  getPost: (id: string) =>
+    apiRequest<{ success: boolean; post: any }>(`/api/posts/${id}`),
+  getCampaignAnalytics: (id: string) =>
+    apiRequest<{ success: boolean; data: { campaign: any; analytics: any; posts: any[] } }>(`/api/campaigns/${id}/analytics`),
 
   // Logs
-  getLogs: (limit: number = 50) => apiRequest<{ success: boolean; data: any[] }>(`/api/admin/logs?limit=${limit}`),
+  getLogs: (limit: number = 50, opts?: { level?: string; service?: string }) => {
+    const search = new URLSearchParams();
+    search.set('limit', String(limit));
+    if (opts?.level) search.set('level', opts.level);
+    if (opts?.service) search.set('service', opts.service);
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; data: any[] }>(`/api/admin/logs?${qs}`);
+  },
 
   // Settings
   getSettings: () => apiRequest<{ success: boolean; data: any }>(`/api/admin/settings`),
@@ -90,7 +112,11 @@ export const adminApi = {
     if (params?.offset != null) search.set('offset', String(params.offset));
     const qs = search.toString();
     return apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/logs${qs ? `?${qs}` : ''}`);
-  }
+  },
+  switchAIProvider: (payload: { provider: 'openai'|'gemini'; model?: string }) =>
+    apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/switch`, { method: 'POST', body: JSON.stringify(payload) }),
+  updateAIProviderConfig: (config: any) =>
+    apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/config`, { method: 'PUT', body: JSON.stringify(config) })
 };
 
 

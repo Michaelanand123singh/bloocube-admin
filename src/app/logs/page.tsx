@@ -23,17 +23,30 @@ export default function LogsPage(){
   const [filterLevel, setFilterLevel] = useState('');
   const [filterService, setFilterService] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [intervalMs, setIntervalMs] = useState(10000);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [timeframe, setTimeframe] = useState<'1h'|'24h'|'7d'|'all'>('24h');
+  const [activeTab, setActiveTab] = useState<'system'|'ai'>('system');
+  const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [jsonEntry, setJsonEntry] = useState<LogEntry|null>(null);
 
   const loadLogs = async () => {
     try {
       setError(null);
       setLoading(true);
-      const response = await adminApi.getLogs();
+      const response = await adminApi.getLogs(limit, { level: filterLevel || undefined, service: activeTab === 'system' ? (filterService || undefined) : undefined });
       // Transform the response to match our interface
-      const logEntries: LogEntry[] = Array.isArray(response.data) 
-        ? response.data 
-        : response.data.logs || [];
+      const logEntries: LogEntry[] = Array.isArray((response as any).data) 
+        ? (response as any).data 
+        : (response as any).data?.logs || [];
       setLogs(logEntries);
+      // Also fetch AI logs for AI tab (best effort)
+      try {
+        const ai: any = await adminApi.getAIProviderLogs({ limit });
+        const list = (ai?.data?.logs || ai?.logs || []);
+        setAiLogs(list);
+      } catch (_) {}
     } catch (e: any) {
       setError(e.message || 'Failed to load logs');
       console.error('Logs fetch error:', e);
@@ -44,16 +57,19 @@ export default function LogsPage(){
 
   useEffect(() => {
     loadLogs();
-    
-    // Auto-refresh every 10 seconds if enabled
     const interval = setInterval(() => {
-      if (autoRefresh) {
-        loadLogs();
-      }
-    }, 10000);
-    
+      if (autoRefresh) loadLogs();
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [autoRefresh]);
+  }, [autoRefresh, intervalMs, limit]);
+
+  const withinTimeframe = (ts: string) => {
+    if (timeframe === 'all') return true;
+    const t = new Date(ts).getTime();
+    const now = Date.now();
+    const delta = timeframe === '1h' ? 3600e3 : timeframe === '24h' ? 24*3600e3 : 7*24*3600e3;
+    return now - t <= delta;
+  };
 
   // Filter logs based on search and filters
   const filteredLogs = logs.filter(log => {
@@ -62,9 +78,12 @@ export default function LogsPage(){
                          log.action?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLevel = !filterLevel || log.level === filterLevel;
     const matchesService = !filterService || log.service === filterService;
+    const matchesTime = withinTimeframe(log.timestamp);
     
-    return matchesSearch && matchesLevel && matchesService;
+    return matchesSearch && matchesLevel && matchesService && matchesTime;
   });
+
+  const pagedLogs = filteredLogs.slice((page - 1) * limit, (page - 1) * limit + limit);
 
   const getLogIcon = (level: string) => {
     switch (level?.toLowerCase()) {
@@ -124,7 +143,14 @@ export default function LogsPage(){
                   System Logs
                 </h1>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-900/40 border border-slate-800/60 rounded-lg p-1">
+                  <div className="flex items-center gap-1">
+                    {(['system','ai'] as const).map(t => (
+                      <button key={t} onClick={() => setActiveTab(t)} className={`text-xs px-2 py-1 rounded-md transition-colors ${activeTab === t ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}>{t.toUpperCase()}</button>
+                    ))}
+                  </div>
+                </div>
                 <button
                   onClick={exportLogs}
                   className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
@@ -165,7 +191,7 @@ export default function LogsPage(){
 
           {/* Filters */}
           <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -210,6 +236,19 @@ export default function LogsPage(){
                 <Filter className="w-4 h-4 mr-2" />
                 {filteredLogs.length} of {logs.length} logs
               </div>
+
+              {/* Timeframe */}
+              <select value={timeframe} onChange={(e) => { setPage(1); setTimeframe(e.target.value as any); }} className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50">
+                <option value="1h">Last 1h</option>
+                <option value="24h">Last 24h</option>
+                <option value="7d">Last 7d</option>
+                <option value="all">All</option>
+              </select>
+
+              {/* Page Size */}
+              <select value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value)); }} className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50">
+                {[20,50,100,200].map(n => <option key={n} value={n}>{n}/page</option>)}
+              </select>
             </div>
           </div>
 
@@ -222,43 +261,43 @@ export default function LogsPage(){
               </div>
             ) : (
               <div className="max-h-96 overflow-y-auto">
-                {filteredLogs.length === 0 ? (
+                {(activeTab === 'system' ? filteredLogs : aiLogs).length === 0 ? (
                   <div className="p-8 text-center">
                     <Activity className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-400">No logs found</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-800/50">
-                    {filteredLogs.map((log, index) => (
-                      <div key={index} className={`p-4 border-l-4 ${getLogColor(log.level)} hover:bg-slate-800/20 transition-colors`}>
+                    {(activeTab === 'system' ? pagedLogs : aiLogs.slice((page-1)*limit, (page-1)*limit+limit)).map((log: any, index: number) => (
+                      <div key={index} className={`p-4 border-l-4 ${getLogColor(log.level || log.status)} hover:bg-slate-800/20 transition-colors`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
-                            {getLogIcon(log.level)}
+                            {getLogIcon(log.level || log.status)}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-sm font-medium text-white">
-                                  {log.level?.toUpperCase() || 'LOG'}
+                                  {(log.level || log.status || 'LOG').toString().toUpperCase()}
                                 </span>
-                                {log.service && (
+                                {(log.service || log.provider) && (
                                   <span className="text-xs px-2 py-1 bg-slate-700/50 text-slate-300 rounded">
-                                    {log.service}
+                                    {log.service || log.provider}
                                   </span>
                                 )}
                                 <span className="text-xs text-slate-500">
-                                  {new Date(log.timestamp).toLocaleString()}
+                                  {new Date(log.timestamp || log.time || Date.now()).toLocaleString()}
                                 </span>
                               </div>
-                              <p className="text-sm text-slate-300 mb-2">{log.message}</p>
-                              {log.error && (
+                              <p className="text-sm text-slate-300 mb-2">{log.message || `${log.operation || ''} ${log.model || ''}`}</p>
+                              {(log.error || log.error_message) && (
                                 <div className="text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">
-                                  {log.error}
+                                  {log.error || log.error_message}
                                 </div>
                               )}
-                              {log.metadata && (
+                              {(log.metadata || log) && (
                                 <details className="text-xs text-slate-400 mt-2">
-                                  <summary className="cursor-pointer hover:text-slate-300">Metadata</summary>
+                                  <summary className="cursor-pointer hover:text-slate-300" onClick={(e) => { e.preventDefault(); setJsonEntry(log); }}>View JSON</summary>
                                   <pre className="mt-2 p-2 bg-slate-800/50 rounded text-xs overflow-x-auto">
-                                    {JSON.stringify(log.metadata, null, 2)}
+                                    {JSON.stringify(log.metadata || log, null, 2)}
                                   </pre>
                                 </details>
                               )}
@@ -272,8 +311,36 @@ export default function LogsPage(){
               </div>
             )}
           </div>
+
+          {/* Pagination footer */}
+          <div className="mt-3 text-sm text-slate-400 flex items-center justify-between">
+            <div>Page {page}</div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setPage(p => Math.max(1, p-1))} className="px-3 py-2 rounded-lg border border-slate-700 disabled:opacity-50" disabled={page <= 1}>Prev</button>
+              <button onClick={() => setPage(p => p+1)} className="px-3 py-2 rounded-lg border border-slate-700">Next</button>
+              <select value={intervalMs} onChange={(e) => setIntervalMs(parseInt(e.target.value))} className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-300">
+                <option value={5000}>5s</option>
+                <option value={10000}>10s</option>
+                <option value={30000}>30s</option>
+                <option value={60000}>60s</option>
+              </select>
+            </div>
+          </div>
         </div>
       </main>
+      {/* JSON Modal */}
+      {jsonEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setJsonEntry(null)} />
+          <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-4xl mx-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-slate-200 font-semibold">Log JSON</div>
+              <button onClick={() => setJsonEntry(null)} className="text-slate-400 hover:text-white">×</button>
+            </div>
+            <pre className="max-h-[70vh] overflow-auto text-xs bg-slate-800/50 p-3 rounded text-slate-100">{JSON.stringify(jsonEntry, null, 2)}</pre>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

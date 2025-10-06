@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Settings, Save, Key, Mail, Database, Shield, AlertCircle, CheckCircle, RefreshCw, Plus, X } from 'lucide-react';
+import { Settings, Save, Key, Mail, Database, Shield, AlertCircle, CheckCircle, RefreshCw, Plus, X, Cpu, ToggleLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -39,6 +39,8 @@ export default function SettingsPage(){
   const [error, setError] = useState<string|null>(null);
   const [success, setSuccess] = useState<string|null>(null);
   const [activeTab, setActiveTab] = useState('api');
+  const [aiConfig, setAiConfig] = useState<any>({});
+  const [providersStatus, setProvidersStatus] = useState<any>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [newUser, setNewUser] = useState<{ name: string; email: string; password: string; role: 'creator' | 'brand' | 'admin' }>({ name: '', email: '', password: '', role: 'creator' });
@@ -55,6 +57,11 @@ export default function SettingsPage(){
         database: data.database || {},
         security: data.security || {}
       });
+      // Load AI providers info best-effort
+      try {
+        const status = await adminApi.getAIProvidersStatus();
+        setProvidersStatus(status.data || status);
+      } catch (_) {}
     } catch (e: any) {
       setError(e.message || 'Failed to load settings');
       console.error('Settings fetch error:', e);
@@ -111,7 +118,8 @@ export default function SettingsPage(){
     { id: 'api', label: 'API Keys', icon: Key },
     { id: 'email', label: 'Email', icon: Mail },
     { id: 'database', label: 'Database', icon: Database },
-    { id: 'security', label: 'Security', icon: Shield }
+    { id: 'security', label: 'Security', icon: Shield },
+    { id: 'ai', label: 'AI Providers', icon: Cpu }
   ];
 
   return (
@@ -354,6 +362,44 @@ export default function SettingsPage(){
                           className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-violet-500/50"
                           placeholder="3600"
                         />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Providers Tab */}
+                {activeTab === 'ai' && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-white mb-4">AI Providers</h3>
+                    <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+                      <div className="text-slate-400 text-sm mb-3">Status</div>
+                      <div className="space-y-2 text-sm">
+                        {providersStatus ? (
+                          Array.isArray(providersStatus.providers) ? providersStatus.providers.map((p:any, idx:number) => (
+                            <div key={idx} className="flex items-center justify-between">
+                              <div className="text-slate-300">{p.name || p.provider}</div>
+                              <div className={`text-xs ${p.status === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>{p.status || 'unknown'}</div>
+                            </div>
+                          )) : <div className="text-slate-400 text-sm">No providers</div>
+                        ) : (
+                          <div className="text-slate-500 text-sm">No status loaded</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+                      <div className="text-slate-400 text-sm mb-3">Switch Primary Provider</div>
+                      <div className="flex items-center gap-3">
+                        <button onClick={async () => { await adminApi.switchAIProvider({ provider: 'openai' }); setSuccess('Switched to OpenAI'); setTimeout(()=>setSuccess(null), 2000); }} className="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700 text-slate-200">OpenAI</button>
+                        <button onClick={async () => { await adminApi.switchAIProvider({ provider: 'gemini' }); setSuccess('Switched to Gemini'); setTimeout(()=>setSuccess(null), 2000); }} className="px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700 text-slate-200">Gemini</button>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+                      <div className="text-slate-400 text-sm mb-3">Provider Config</div>
+                      <textarea value={JSON.stringify(aiConfig, null, 2)} onChange={(e) => setAiConfig(() => { try { return JSON.parse(e.target.value); } catch { return e.target.value; } })} className="w-full h-40 bg-slate-900/60 border border-slate-700 rounded p-3 text-sm text-slate-200" />
+                      <div className="mt-3 flex justify-end">
+                        <button onClick={async () => { await adminApi.updateAIProviderConfig(aiConfig); setSuccess('AI config updated'); setTimeout(()=>setSuccess(null), 2000); }} className="px-4 py-2 rounded-lg bg-violet-600 text-white">Save AI Config</button>
                       </div>
                     </div>
                   </div>
