@@ -24,6 +24,7 @@ export default function UsersPage(){
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newUser, setNewUser] = useState<{ name: string; email: string; password: string; role: 'creator' | 'brand' | 'admin' }>({ name: '', email: '', password: '', role: 'creator' });
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const loadUsers = async () => {
     try {
@@ -205,7 +206,7 @@ export default function UsersPage(){
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
                     {filteredUsers.map((user) => (
-                      <tr key={user._id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={user._id} className="hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedUser(user)}>
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center mr-4">
@@ -255,7 +256,7 @@ export default function UsersPage(){
                             {new Date(user.createdAt).toLocaleDateString()}
                           </div>
                         </td>
-                        <td className="px-6 py-4 flex items-center gap-2">
+                        <td className="px-6 py-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => toggleUser(user._id)}
                             className={`px-3 py-2 text-xs font-medium rounded-lg transition-all ${
@@ -291,6 +292,67 @@ export default function UsersPage(){
           </div>
         </div>
       </main>
+  {/* User Details Modal */}
+  {selectedUser && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedUser(null)} />
+      <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-3xl mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">{selectedUser.name}</h2>
+              <div className="text-slate-400 text-sm">{selectedUser.email}</div>
+            </div>
+          </div>
+          <button onClick={() => setSelectedUser(null)} className="p-2 text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+            <div className="text-slate-400 text-xs mb-2">Account</div>
+            <div className="text-sm text-slate-300">Role: <span className="text-white font-medium">{selectedUser.role}</span></div>
+            <div className="text-sm text-slate-300">Status: <span className={`font-medium ${selectedUser.isActive ? 'text-emerald-400' : 'text-red-400'}`}>{selectedUser.isActive ? 'Active' : 'Inactive'}</span></div>
+            <div className="text-sm text-slate-300">Joined: <span className="text-white font-medium">{new Date(selectedUser.createdAt).toLocaleString()}</span></div>
+            {selectedUser.lastLogin && (
+              <div className="text-sm text-slate-300">Last Login: <span className="text-white font-medium">{new Date(selectedUser.lastLogin).toLocaleString()}</span></div>
+            )}
+          </div>
+
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+            <div className="text-slate-400 text-xs mb-2">Profile</div>
+            <div className="text-sm text-slate-300">Bio: <span className="text-white font-medium">{(selectedUser as any).profile?.bio || '—'}</span></div>
+            <div className="text-sm text-slate-300">Avatar URL: <span className="text-white font-medium break-all">{(selectedUser as any).profile?.avatar_url || '—'}</span></div>
+          </div>
+
+          <div className="md:col-span-2 bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+            <div className="text-slate-400 text-xs mb-2">Connected Social Accounts</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              {['youtube','twitter','instagram','facebook','linkedin'].map((p) => {
+                const acc = (selectedUser as any).socialAccounts?.[p];
+                const connected = Boolean(acc?.connectedAt || acc?.id);
+                return (
+                  <div key={p} className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
+                    <div className="text-slate-400 text-xs mb-1 uppercase">{p}</div>
+                    <div className={`font-medium ${connected ? 'text-emerald-400' : 'text-slate-500'}`}>{connected ? 'Connected' : 'Not connected'}</div>
+                    {connected && (
+                      <div className="text-slate-400 text-xs mt-1">Since: {acc.connectedAt ? new Date(acc.connectedAt).toLocaleDateString() : '—'}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={() => setSelectedUser(null)} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Close</button>
+        </div>
+      </div>
+    </div>
+  )}
       {/* Create User Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
