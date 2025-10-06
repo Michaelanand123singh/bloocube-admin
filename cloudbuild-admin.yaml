@@ -1,15 +1,4 @@
 # Cloud Build config to build and deploy bloocube-admin to Cloud Run
-# Configure your Cloud Build trigger to use this file and set substitutions.
-# Required substitutions:
-#  _REGION: e.g. asia-southeast1
-#  _SERVICE: bloocube-admin
-#  _NEXT_PUBLIC_ADMIN_API_URL: e.g. https://api-backend.bloocube.com
-
-substitutions:
-  _REGION: asia-southeast1
-  _SERVICE: bloocube-admin
-  _REPO: bloocube
-  _NEXT_PUBLIC_ADMIN_API_URL: https://api-backend.bloocube.com
 
 steps:
   # Build the Docker image
@@ -17,35 +6,35 @@ steps:
     args:
       [
         "build",
-        "-t", "$_REGION-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA",
+        "-t", "asia-southeast1-docker.pkg.dev/$PROJECT_ID/bloocube/bloocube-admin:latest",
         "-f", "bloocube-admin/Dockerfile",
-        "--build-arg", "NEXT_PUBLIC_ADMIN_API_URL=${_NEXT_PUBLIC_ADMIN_API_URL}",
+        "--build-arg", "NEXT_PUBLIC_ADMIN_API_URL=https://api-backend.bloocube.com",
         "bloocube-admin"
       ]
 
   # Push the image to Artifact Registry
   - name: gcr.io/cloud-builders/docker
-    args: ["push", "$_REGION-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA"]
+    args: ["push", "asia-southeast1-docker.pkg.dev/$PROJECT_ID/bloocube/bloocube-admin:latest"]
 
   # Deploy to Cloud Run
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
       [
-        "run", "deploy", "${_SERVICE}",
-        "--image", "$_REGION-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA",
-        "--region", "${_REGION}",
+        "run", "deploy", "bloocube-admin",
+        "--image", "asia-southeast1-docker.pkg.dev/$PROJECT_ID/bloocube/bloocube-admin:latest",
+        "--region", "asia-southeast1",
         "--platform", "managed",
         "--allow-unauthenticated",
         "--port", "8080",
         "--memory", "512Mi",
         "--cpu", "1",
         "--timeout", "300",
-        "--set-env-vars", "NODE_ENV=production,NEXT_PUBLIC_ADMIN_API_URL=${_NEXT_PUBLIC_ADMIN_API_URL}"
+        "--set-env-vars", "NODE_ENV=production,NEXT_PUBLIC_ADMIN_API_URL=https://api-backend.bloocube.com"
       ]
 
 images:
-  - $_REGION-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+  - asia-southeast1-docker.pkg.dev/$PROJECT_ID/bloocube/bloocube-admin:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY
