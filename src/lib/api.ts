@@ -127,7 +127,31 @@ export const adminApi = {
   switchAIProvider: (payload: { provider: 'openai'|'gemini'; model?: string }) =>
     apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/switch`, { method: 'POST', body: JSON.stringify(payload) }),
   updateAIProviderConfig: (config: any) =>
-    apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/config`, { method: 'PUT', body: JSON.stringify(config) })
+    apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/config`, { method: 'PUT', body: JSON.stringify(config) }),
+
+  // Notifications
+  getNotifications: (params?: { page?: number; limit?: number; unreadOnly?: boolean; type?: string; priority?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.unreadOnly !== undefined) search.set('unreadOnly', String(params.unreadOnly));
+    if (params?.type) search.set('type', params.type);
+    if (params?.priority) search.set('priority', params.priority);
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; data: { notifications: any[]; pagination: any; unreadCount: number } }>(`/api/notifications${qs ? `?${qs}` : ''}`);
+  },
+  getUnreadCount: () =>
+    apiRequest<{ success: boolean; data: { unreadCount: number } }>(`/api/notifications/unread-count`),
+  markAsRead: (id: string) =>
+    apiRequest<{ success: boolean; data: { notification: any } }>(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllAsRead: () =>
+    apiRequest<{ success: boolean; data: { modifiedCount: number } }>(`/api/notifications/mark-all-read`, { method: 'PATCH' }),
+  deleteNotification: (id: string) =>
+    apiRequest<{ success: boolean; data: { id: string } }>(`/api/notifications/${id}`, { method: 'DELETE' }),
+  createNotification: (payload: { title: string; message: string; type: string; recipient: string; priority?: string; data?: any; relatedResource?: any; actions?: any[]; expiresAt?: string }) =>
+    apiRequest<{ success: boolean; data: { notification: any } }>(`/api/notifications`, { method: 'POST', body: JSON.stringify(payload) }),
+  getNotificationStats: () =>
+    apiRequest<{ success: boolean; data: any }>(`/api/notifications/stats`)
 };
 
 
