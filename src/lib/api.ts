@@ -43,6 +43,17 @@ export const adminApi = {
   createUser: (payload: { name: string; email: string; password: string; role: 'creator'|'brand'|'admin' }) =>
     apiRequest<{ success: boolean; data: { user: any } }>(`/api/admin/users`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteUser: (id: string) => apiRequest<{ success: boolean; data: { id: string } }>(`/api/admin/users/${id}`, { method: 'DELETE' }),
+  getUserPosts: (userId: string, params?: { page?: number; limit?: number; status?: string; platform?: string; search?: string; sort?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.status) search.set('status', params.status);
+    if (params?.platform) search.set('platform', params.platform);
+    if (params?.search) search.set('search', params.search);
+    if (params?.sort) search.set('sort', params.sort);
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; data: { user: any; posts: any[]; pagination: { page: number; limit: number; total: number; pages: number } } }>(`/api/admin/users/${userId}/posts${qs ? `?${qs}` : ''}`);
+  },
 
   // Campaigns (placeholder for posts)
   listCampaigns: () => apiRequest<{ success: boolean; data: { campaigns: any[] } }>(`/api/admin/campaigns`),

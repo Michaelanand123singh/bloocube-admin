@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { FileText, Search, Filter, RefreshCw, Pause, AlertCircle, CheckCircle, Clock, User, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
+import { FileText, Search, Filter, RefreshCw, Pause, AlertCircle, CheckCircle, Clock, User, ChevronLeft, ChevronRight, Globe, Users, X, ArrowLeft } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -17,6 +17,14 @@ interface PostItem {
   platform_url?: string;
 }
 
+interface UserItem {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+}
+
 export default function PostsPage(){
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [error, setError] = useState<string|null>(null);
@@ -30,6 +38,14 @@ export default function PostsPage(){
   const [selected, setSelected] = useState<PostItem | null>(null);
   const [selectedFull, setSelectedFull] = useState<any | null>(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
+  
+  // User management state
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [userPostsLoading, setUserPostsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'all' | 'user'>('all');
 
   const loadPosts = async () => {
     try {
@@ -46,14 +62,67 @@ export default function PostsPage(){
     }
   };
 
-  useEffect(() => {
+  const loadUsers = async () => {
+    try {
+      const response = await adminApi.listUsers();
+      setUsers(response.data.users || []);
+    } catch (e: any) {
+      console.error('Users fetch error:', e);
+    }
+  };
+
+  const loadUserPosts = async (userId: string) => {
+    try {
+      setError(null);
+      setUserPostsLoading(true);
+      const response = await adminApi.getUserPosts(userId, { 
+        page, 
+        limit, 
+        status: filterStatus || undefined, 
+        platform: filterPlatform || undefined, 
+        search: searchTerm || undefined 
+      });
+      setPosts(response.data.posts || []);
+      setPagination(response.data.pagination || null);
+      setSelectedUser(response.data.user);
+      setViewMode('user');
+    } catch (e: any) {
+      setError(e.message || 'Failed to load user posts');
+      console.error('User posts fetch error:', e);
+    } finally {
+      setUserPostsLoading(false);
+    }
+  };
+
+  const resetToAllPosts = () => {
+    setSelectedUser(null);
+    setViewMode('all');
+    setUserSearchTerm('');
+    setShowUserSearch(false);
     loadPosts();
-  }, [page, limit, filterStatus, filterPlatform]);
+  };
+
+  useEffect(() => {
+    if (viewMode === 'all') {
+      loadPosts();
+    } else if (selectedUser) {
+      loadUserPosts(selectedUser._id);
+    }
+  }, [page, limit, filterStatus, filterPlatform, viewMode, selectedUser]);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const platformBadge = (p: string) => {
     const colors: any = { twitter: 'bg-sky-500/20 text-sky-300', youtube: 'bg-red-500/20 text-red-300', instagram: 'bg-pink-500/20 text-pink-300', linkedin: 'bg-blue-500/20 text-blue-300', facebook: 'bg-indigo-500/20 text-indigo-300' };
     return <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${colors[p] || 'bg-slate-500/20 text-slate-300'}`}><Globe className="w-3 h-3 mr-1" />{p}</span>;
   };
+
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
 
   const filteredPosts = posts.filter(p => {
     const matchesSearch = (p.title || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -108,20 +177,49 @@ export default function PostsPage(){
                 <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
                   <FileText className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                  Post Management
-                </h1>
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                    Post Management
+                  </h1>
+                  {selectedUser && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-slate-400 text-sm">Viewing posts by:</span>
+                      <span className="text-violet-400 font-medium">{selectedUser.name}</span>
+                      <button
+                        onClick={resetToAllPosts}
+                        className="text-slate-500 hover:text-white transition-colors"
+                        title="View all posts"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => loadPosts()}
-                disabled={loading}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all disabled:opacity-50"
-                title="Refresh posts"
-              >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
+              <div className="flex items-center gap-2">
+                {viewMode === 'all' && (
+                  <button
+                    onClick={() => setShowUserSearch(true)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-all"
+                    title="Search by user"
+                  >
+                    <Users className="w-4 h-4" />
+                    Search by User
+                  </button>
+                )}
+                <button
+                  onClick={() => viewMode === 'all' ? loadPosts() : selectedUser ? loadUserPosts(selectedUser._id) : loadPosts()}
+                  disabled={loading || userPostsLoading}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all disabled:opacity-50"
+                  title="Refresh posts"
+                >
+                  <RefreshCw className={`w-5 h-5 ${(loading || userPostsLoading) ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
             </div>
-            <p className="text-slate-400 text-lg ml-13">Monitor and manage all posts and campaigns</p>
+            <p className="text-slate-400 text-lg ml-13">
+              {viewMode === 'all' ? 'Monitor and manage all posts and campaigns' : `Posts by ${selectedUser?.name || 'selected user'}`}
+            </p>
           </div>
 
           {/* Error State */}
@@ -350,6 +448,83 @@ export default function PostsPage(){
 
             <div className="mt-6 flex justify-end">
               <button onClick={() => setSelected(null)} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Search Modal */}
+      {showUserSearch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowUserSearch(false)} />
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-2xl mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Search Users</h2>
+              <button onClick={() => setShowUserSearch(false)} className="p-2 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search users by name or email..."
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500/50"
+              />
+            </div>
+
+            <div className="max-h-96 overflow-y-auto">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400">No users found</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredUsers.map((user) => (
+                    <div
+                      key={user._id}
+                      onClick={() => {
+                        loadUserPosts(user._id);
+                        setShowUserSearch(false);
+                      }}
+                      className="p-4 bg-slate-800/40 border border-slate-700/50 rounded-lg hover:bg-slate-800/60 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-white">{user.name}</div>
+                            <div className="text-sm text-slate-400">{user.email}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.role === 'admin' ? 'bg-red-500/20 text-red-300' :
+                            user.role === 'creator' ? 'bg-blue-500/20 text-blue-300' :
+                            user.role === 'brand' ? 'bg-purple-500/20 text-purple-300' :
+                            'bg-slate-500/20 text-slate-300'
+                          }`}>
+                            {user.role}
+                          </span>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.isActive 
+                              ? 'bg-emerald-500/20 text-emerald-300' 
+                              : 'bg-red-500/20 text-red-300'
+                          }`}>
+                            {user.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
