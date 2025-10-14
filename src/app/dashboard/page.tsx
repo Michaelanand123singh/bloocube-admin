@@ -17,6 +17,8 @@ export default function DashboardPage(){
   const [recentCampaigns, setRecentCampaigns] = useState<any[] | null>(null);
   const [systemLogs, setSystemLogs] = useState<any[] | null>(null);
   const [aiLogs, setAiLogs] = useState<any | null>(null);
+  const [postsSeries, setPostsSeries] = useState<Array<{ label:string; value:number }>>([]);
+  const [successBars, setSuccessBars] = useState<Array<{ label:string; success:number; failed:number }>>([]);
 
   const fetchStats = async () => {
     try {
@@ -45,6 +47,8 @@ export default function DashboardPage(){
         withRetry(() => adminApi.getPlatformStats('instagram', period)),
         withRetry(() => adminApi.getPlatformStats('facebook', period)),
         withRetry(() => adminApi.getPlatformStats('twitter', period)),
+        withRetry(() => adminApi.getPostsTimeSeries(period)),
+        withRetry(() => adminApi.getSuccessFailure(period)),
         withRetry(() => adminApi.getAIProvidersStatus()),
         withRetry(() => adminApi.listUsers()),
         withRetry(() => adminApi.listCampaigns()),
@@ -52,7 +56,7 @@ export default function DashboardPage(){
         withRetry(() => adminApi.getAIProviderLogs({ limit: 10 }))
       ]);
 
-      const [topRes, ytRes, liRes, igRes, fbRes, twRes, aiRes, usersRes, campaignsRes, logsRes, aiLogsRes] = results;
+      const [topRes, ytRes, liRes, igRes, fbRes, twRes, tsRes, sfRes, aiRes, usersRes, campaignsRes, logsRes, aiLogsRes] = results;
 
       if (topRes.status === 'fulfilled') setTopPosts(topRes.value.data?.posts || []);
       if (ytRes.status === 'fulfilled' || liRes.status === 'fulfilled' || igRes.status === 'fulfilled' || fbRes.status === 'fulfilled' || twRes.status === 'fulfilled') {
@@ -65,6 +69,8 @@ export default function DashboardPage(){
         });
       }
       if (aiRes.status === 'fulfilled') setAiStatus(aiRes.value.data);
+      if (tsRes.status === 'fulfilled') setPostsSeries(tsRes.value.data?.series || []);
+      if (sfRes.status === 'fulfilled') setSuccessBars(sfRes.value.data?.bars || []);
       if (usersRes.status === 'fulfilled') setRecentUsers(usersRes.value.data?.users?.slice(0,5) || []);
       if (campaignsRes.status === 'fulfilled') setRecentCampaigns(campaignsRes.value.data?.campaigns?.slice(0,5) || []);
       if (logsRes.status === 'fulfilled') setSystemLogs(logsRes.value.data || []);
@@ -236,8 +242,8 @@ export default function DashboardPage(){
         <div className="mt-8">
           <div className="text-xl font-semibold text-slate-200 mb-4">Post Activity & Performance</div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SimpleLineChart title="Posts Over Time" series={buildPostsTimeSeries(aiLogs)} />
-            <SimpleBarChart title="Post Success vs. Failure" bars={buildSuccessFailure(aiLogs)} />
+            <SimpleLineChart title="Posts Over Time" series={postsSeries} />
+            <SimpleBarChart title="Post Success vs. Failure" bars={successBars} />
           </div>
         </div>
 

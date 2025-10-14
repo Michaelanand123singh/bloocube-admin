@@ -107,6 +107,16 @@ export const adminApi = {
     return apiRequest<{ success: boolean; data: { analytics: any[] } }>(`/api/analytics/user/${userId}${qs}`);
   },
 
+  // Dashboard analytics aggregations
+  getPostsTimeSeries: (period?: 'last_7_days'|'last_30_days'|'last_90_days') => {
+    const qs = period ? `?period=${encodeURIComponent(period)}` : '';
+    return apiRequest<{ success: boolean; data: { series: Array<{ label:string; value:number }> } }>(`/api/analytics/timeseries/posts${qs}`);
+  },
+  getSuccessFailure: (period?: 'last_7_days'|'last_30_days'|'last_90_days') => {
+    const qs = period ? `?period=${encodeURIComponent(period)}` : '';
+    return apiRequest<{ success: boolean; data: { bars: Array<{ label:string; success:number; failed:number }> } }>(`/api/analytics/success-failure${qs}`);
+  },
+
   // AI Providers (admin)
   getAIProvidersStatus: () =>
     apiRequest<{ success: boolean; data: any }>(`/api/admin/ai-providers/status`),
