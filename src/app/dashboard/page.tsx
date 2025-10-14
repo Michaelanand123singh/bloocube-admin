@@ -199,65 +199,7 @@ export default function DashboardPage(){
           </div>
         )}
 
-        {/* Charts and Tables */}
-        <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Top Posts */}
-          <div className="lg:col-span-2 bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-slate-200">
-                <LineChart className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-lg font-semibold">Top Performing Posts</h2>
-              </div>
-              <div className="text-sm text-slate-500">Last 30 days</div>
-            </div>
-            {!topPosts && <div className="text-slate-500 text-sm">No data</div>}
-            {topPosts && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-slate-400">
-                      <th className="text-left font-medium py-2 pr-4">Title</th>
-                      <th className="text-left font-medium py-2 pr-4">Platform</th>
-                      <th className="text-right font-medium py-2 pr-0">Engagement</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topPosts.map((p: any, idx: number) => (
-                      <tr key={idx} className="border-t border-slate-800/50">
-                        <td className="py-2 pr-4 text-slate-200">{p.title || p.post_title || 'Untitled'}</td>
-                        <td className="py-2 pr-4 text-slate-400">{p.platform || p.metrics?.platform || '—'}</td>
-                        <td className="py-2 pr-0 text-right text-slate-200">{(p.metrics?.engagement || p.engagement || 0).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* AI Providers Status */}
-          <div className="bg-slate-900/30 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
-            <div className="flex items-center gap-2 text-slate-200 mb-4">
-              <Cpu className="w-5 h-5 text-violet-400" />
-              <h2 className="text-lg font-semibold">AI Providers</h2>
-            </div>
-            {!aiStatus && <div className="text-slate-500 text-sm">No status</div>}
-            {aiStatus && (
-              <div className="space-y-3">
-                {(Array.isArray(aiStatus?.providers) ? aiStatus.providers : Object.entries(aiStatus || {})).slice(0,4).map((p: any, idx: number) => {
-                  const provider = Array.isArray(aiStatus?.providers) ? p : { name: p[0], status: p[1]?.status };
-                  const isUp = (provider.status || provider.health || 'up') === 'up';
-                  return (
-                    <div key={idx} className="flex items-center justify-between">
-                      <div className="text-slate-300">{provider.name || provider.provider || 'Provider'}</div>
-                      <div className={`text-xs font-medium ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>{isUp ? 'Healthy' : 'Down'}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Charts and Tables - Removed Top Performing and AI Providers sections as requested */}
 
         {/* Platform Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
