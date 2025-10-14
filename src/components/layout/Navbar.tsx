@@ -445,27 +445,35 @@ export default function Navbar() {
 
         {/* Mobile navigation */}
         {isOpen && (
-          <div className="md:hidden border-t border-slate-800/50 py-4">
-            <div className="space-y-1">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href as any} // Fix: Type assertion to resolve the type conflict
-                    onClick={() => setIsOpen(false)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                      isActive
-                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.name}
-                  </Link>
-                );
-              })}
+          <div className="md:hidden">
+            {/* Backdrop */}
+            <div className="fixed inset-0 top-16 bg-black/50" onClick={() => setIsOpen(false)} />
+            {/* Panel */}
+            <div className="fixed top-16 inset-x-0 z-50 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800/50">
+              <div className="max-h-[75vh] overflow-y-auto py-3">
+                <div className="px-4 space-y-1" role="menu" aria-label="Mobile menu">
+                  {navigation.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href as any}
+                        onClick={() => setIsOpen(false)}
+                        className={`w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-3 ${
+                          isActive
+                            ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                        }`}
+                        role="menuitem"
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )}
