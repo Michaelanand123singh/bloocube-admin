@@ -28,7 +28,7 @@ export default function Sidebar(){
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:flex-col md:w-64 bg-slate-900/60 border-r border-slate-800/50 min-h-[calc(100vh-4rem)]">
+    <aside className="hidden md:flex md:flex-col md:w-64 bg-slate-900/60 border-r border-slate-800/50 min-h-[calc(100vh-4rem)] sticky top-16">
       <div className="flex-1 px-3 py-4">
         <nav className="space-y-1">
           {navItems.map(item => {

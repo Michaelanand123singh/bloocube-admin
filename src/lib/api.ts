@@ -57,6 +57,19 @@ export const adminApi = {
 
   // Campaigns (placeholder for posts)
   listCampaigns: () => apiRequest<{ success: boolean; data: { campaigns: any[] } }>(`/api/admin/campaigns`),
+  getCampaignBids: (id: string, params?: { page?: number; limit?: number; status?: string; sort?: string }) => {
+    const search = new URLSearchParams();
+    if (params?.page) search.set('page', String(params.page));
+    if (params?.limit) search.set('limit', String(params.limit));
+    if (params?.status) search.set('status', params.status);
+    if (params?.sort) search.set('sort', params.sort);
+    const qs = search.toString();
+    return apiRequest<{ success: boolean; data: { bids: any[]; pagination: { page: number; limit: number; total: number; pages: number } } }>(`/api/campaigns/${id}/bids${qs ? `?${qs}` : ''}`);
+  },
+  acceptBid: (campaignId: string, bidId: string) =>
+    apiRequest<{ success: boolean; data: { bid: any } }>(`/api/campaigns/${campaignId}/bids/${bidId}/accept`, { method: 'POST' }),
+  rejectBid: (campaignId: string, bidId: string) =>
+    apiRequest<{ success: boolean; data: { bid: any } }>(`/api/campaigns/${campaignId}/bids/${bidId}/reject`, { method: 'POST' }),
   // Posts (admin can fetch all via /api/posts with query)
   listPosts: (params?: { page?: number; limit?: number; status?: string; platform?: string; search?: string }) => {
     const search = new URLSearchParams();

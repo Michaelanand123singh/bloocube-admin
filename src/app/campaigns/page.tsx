@@ -8,8 +8,10 @@ export default function CampaignsPage() {
   const [error, setError] = useState<string>('');
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selected, setSelected] = useState<any|null>(null);
-  const [details, setDetails] = useState<{analytics:any; posts:any[]} | null>(null);
+  const [details, setDetails] = useState<{analytics:any; posts:any[]; bids:any[]; pagination?: any} | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [bidsLoading, setBidsLoading] = useState(false);
+  const [bidsError, setBidsError] = useState<string>('');
 
   useEffect(() => {
     (async () => {
@@ -51,7 +53,14 @@ export default function CampaignsPage() {
                     try {
                       setDetailsLoading(true);
                       const res = await adminApi.getCampaignAnalytics(c._id);
-                      setDetails({ analytics: res.data.analytics, posts: res.data.posts || [] });
+                      setDetails({ analytics: res.data.analytics, posts: res.data.posts || [], bids: [] });
+                      // fire and forget: load bids
+                      setBidsLoading(true);
+                      setBidsError('');
+                      adminApi.getCampaignBids(c._id, { limit: 50, sort: '-createdAt' })
+                        .then(bres => setDetails(d => d ? { ...d, bids: bres.data.bids || [], pagination: bres.data.pagination } : d))
+                        .catch((e:any) => setBidsError(e?.message || 'Failed to load bids'))
+                        .finally(() => setBidsLoading(false));
                     } catch (e) {
                       // keep modal open even if analytics fails
                     } finally {
@@ -137,6 +146,90 @@ export default function CampaignsPage() {
                 <div className="text-slate-400 text-xs mb-3">Requirements</div>
                 <div className="text-sm text-slate-300 whitespace-pre-wrap">{selected.requirements?.description || '—'}</div>
               </div>
+            </div>
+
+            {/* Bids & Interest */}
+            <div className="mt-4 bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-slate-400 text-xs">Bids & Interest</div>
+                {details?.pagination && (
+                  <div className="text-[11px] text-slate-500">{details.pagination.total} total</div>
+                )}
+              </div>
+              {bidsLoading && <div className="text-sm text-slate-400">Loading bids…</div>}
+              {bidsError && <div className="text-sm text-red-400">{bidsError}</div>}
+              {!bidsLoading && details && (
+                <div className="overflow-auto max-h-64">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-slate-700/50">
+                        <th className="text-left py-2 pr-3">Creator</th>
+                        <th className="text-left py-2 pr-3">Bid</th>
+                        <th className="text-left py-2 pr-3">Deliverables</th>
+                        <th className="text-left py-2 pr-3">Status</th>
+                        <th className="text-right py-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(details.bids || []).map((b:any) => (
+                        <tr key={b._id} className="border-b border-slate-800/40">
+                          <td className="py-2 pr-3">
+                            <div className="text-slate-200">{b.creator_id?.name || b.creator?.name || '—'}</div>
+                            <div className="text-[11px] text-slate-500">{b.creator_id?.email}</div>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <div className="text-slate-200">{b.currency || 'INR'} {b.bid_amount?.toLocaleString?.() || b.bid_amount}</div>
+                            <div className="text-[11px] text-slate-500 truncate max-w-[260px]" title={b.proposal_text}>{b.proposal_text}</div>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <div className="text-[11px] text-slate-400">Posts: {b.deliverables?.posts || 0} • Stories: {b.deliverables?.stories || 0} • Reels: {b.deliverables?.reels || 0} • Videos: {b.deliverables?.videos || 0}</div>
+                            {b.deliverables?.timeline && <div className="text-[11px] text-slate-500">Timeline: {b.deliverables.timeline}</div>}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs">{b.status}</span>
+                          </td>
+                          <td className="py-2 text-right">
+                            <div className="inline-flex gap-2">
+                              <button
+                                disabled={b.status !== 'pending'}
+                                onClick={async () => {
+                                  try {
+                                    await adminApi.acceptBid(selected._id, b._id);
+                                    // refresh bids
+                                    const br = await adminApi.getCampaignBids(selected._id, { limit: 50, sort: '-createdAt' });
+                                    setDetails(d => d ? { ...d, bids: br.data.bids || [], pagination: br.data.pagination } : d);
+                                  } catch (e:any) {
+                                    setBidsError(e?.message || 'Failed to accept bid');
+                                  }
+                                }}
+                                className="px-2 py-1 rounded border border-emerald-600 text-emerald-400 hover:bg-emerald-900/20 disabled:opacity-50"
+                              >Accept</button>
+                              <button
+                                disabled={b.status !== 'pending'}
+                                onClick={async () => {
+                                  try {
+                                    await adminApi.rejectBid(selected._id, b._id);
+                                    const br = await adminApi.getCampaignBids(selected._id, { limit: 50, sort: '-createdAt' });
+                                    setDetails(d => d ? { ...d, bids: br.data.bids || [], pagination: br.data.pagination } : d);
+                                  } catch (e:any) {
+                                    setBidsError(e?.message || 'Failed to reject bid');
+                                  }
+                                }}
+                                className="px-2 py-1 rounded border border-red-600 text-red-400 hover:bg-red-900/20 disabled:opacity-50"
+                              >Reject</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {(details.bids || []).length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-slate-500 text-sm">No bids yet</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="mt-4">
