@@ -53,15 +53,38 @@ function LoginPageInner(){
   };
 
   return (
-    <main style={{display:'grid',placeItems:'center',minHeight:'100dvh'}}>
-      <div style={{background:'#14141b',padding:'24px',borderRadius:12,width:360}}>
-        <h1 style={{margin:'0 0 12px'}}>Admin Login</h1>
-        <form style={{display:'grid',gap:8}} onSubmit={onSubmit}>
-          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" type="email" style={{padding:10,borderRadius:8,border:'1px solid #2a2a33',background:'#0f0f14',color:'#eef2f7'}}/>
-          <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" type="password" style={{padding:10,borderRadius:8,border:'1px solid #2a2a33',background:'#0f0f14',color:'#eef2f7'}}/>
-          <button type="submit" style={{padding:10,borderRadius:8,border:'1px solid #2a2a33',background:'#2563eb',color:'#fff'}}>Login</button>
-          {error && <div style={{color:'#ef4444'}}>{error}</div>}
-        </form>
+    <main className="min-h-[100dvh] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="relative mb-6 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+            <span className="text-white text-xl font-bold">B</span>
+          </div>
+          <h1 className="mt-3 text-2xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Bloocube Admin</h1>
+          <p className="text-slate-400 text-sm">Sign in to manage your platform</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800/60 bg-slate-900/60 backdrop-blur-sm p-5 shadow-xl shadow-black/20">
+          <form className="grid gap-3" onSubmit={onSubmit}>
+            <div>
+              <label className="block text-slate-400 text-xs mb-1">Email</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@company.com" type="email" className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-slate-800/60 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-600/40 focus:border-violet-600/40"/>
+            </div>
+            <div>
+              <label className="block text-slate-400 text-xs mb-1">Password</label>
+              <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" type="password" className="w-full px-3 py-2 rounded-lg bg-slate-950/60 border border-slate-800/60 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-600/40 focus:border-violet-600/40"/>
+            </div>
+            {error && <div className="text-red-400 text-sm">{error}</div>}
+            <button type="submit" className="mt-1 inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium transition-colors">Sign in</button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <a className="text-xs text-slate-400 hover:text-slate-300 cursor-pointer">Forgot password?</a>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-slate-500 text-xs">
+          Protected area. Authorized administrators only.
+        </div>
       </div>
     </main>
   )
