@@ -42,6 +42,9 @@ export default function DashboardPage(){
         withRetry(() => adminApi.getTopPosts(5, period)),
         withRetry(() => adminApi.getPlatformStats('youtube', period)),
         withRetry(() => adminApi.getPlatformStats('linkedin', period)),
+        withRetry(() => adminApi.getPlatformStats('instagram', period)),
+        withRetry(() => adminApi.getPlatformStats('facebook', period)),
+        withRetry(() => adminApi.getPlatformStats('twitter', period)),
         withRetry(() => adminApi.getAIProvidersStatus()),
         withRetry(() => adminApi.listUsers()),
         withRetry(() => adminApi.listCampaigns()),
@@ -49,13 +52,16 @@ export default function DashboardPage(){
         withRetry(() => adminApi.getAIProviderLogs({ limit: 10 }))
       ]);
 
-      const [topRes, ytRes, liRes, aiRes, usersRes, campaignsRes, logsRes, aiLogsRes] = results;
+      const [topRes, ytRes, liRes, igRes, fbRes, twRes, aiRes, usersRes, campaignsRes, logsRes, aiLogsRes] = results;
 
       if (topRes.status === 'fulfilled') setTopPosts(topRes.value.data?.posts || []);
-      if (ytRes.status === 'fulfilled' || liRes.status === 'fulfilled') {
+      if (ytRes.status === 'fulfilled' || liRes.status === 'fulfilled' || igRes.status === 'fulfilled' || fbRes.status === 'fulfilled' || twRes.status === 'fulfilled') {
         setPlatformStats({
           youtube: ytRes.status === 'fulfilled' ? (ytRes.value.data?.stats || {}) : (platformStats?.youtube || {}),
-          linkedin: liRes.status === 'fulfilled' ? (liRes.value.data?.stats || {}) : (platformStats?.linkedin || {})
+          linkedin: liRes.status === 'fulfilled' ? (liRes.value.data?.stats || {}) : (platformStats?.linkedin || {}),
+          instagram: igRes.status === 'fulfilled' ? (igRes.value.data?.stats || {}) : (platformStats?.instagram || {}),
+          facebook: fbRes.status === 'fulfilled' ? (fbRes.value.data?.stats || {}) : (platformStats?.facebook || {}),
+          twitter: twRes.status === 'fulfilled' ? (twRes.value.data?.stats || {}) : (platformStats?.twitter || {})
         });
       }
       if (aiRes.status === 'fulfilled') setAiStatus(aiRes.value.data);
@@ -202,12 +208,15 @@ export default function DashboardPage(){
         {/* Charts and Tables - Removed Top Performing and AI Providers sections as requested */}
 
         {/* Platform Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {/* Simple inline bar charts using CSS widths */}
           {platformStats && (
             <>
-              <PlatformStatsCard platform="YouTube" icon={<Server className="w-4 h-4 text-red-400" />} stats={platformStats.youtube} />
-              <PlatformStatsCard platform="LinkedIn" icon={<Server className="w-4 h-4 text-blue-400" />} stats={platformStats.linkedin} />
+              {platformStats.youtube && <PlatformStatsCard platform="YouTube" icon={<Server className="w-4 h-4 text-red-400" />} stats={platformStats.youtube} />}
+              {platformStats.linkedin && <PlatformStatsCard platform="LinkedIn" icon={<Server className="w-4 h-4 text-blue-400" />} stats={platformStats.linkedin} />}
+              {platformStats.instagram && <PlatformStatsCard platform="Instagram" icon={<Server className="w-4 h-4 text-pink-400" />} stats={platformStats.instagram} />}
+              {platformStats.facebook && <PlatformStatsCard platform="Facebook" icon={<Server className="w-4 h-4 text-indigo-400" />} stats={platformStats.facebook} />}
+              {platformStats.twitter && <PlatformStatsCard platform="Twitter" icon={<Server className="w-4 h-4 text-sky-400" />} stats={platformStats.twitter} />}
             </>
           )}
         </div>
