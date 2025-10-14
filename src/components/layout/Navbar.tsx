@@ -228,7 +228,7 @@ export default function Navbar() {
               <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Activity className="w-5 h-5 text-white" />
               </div>
-              <span className="ml-2 text-xl font-bold text-white">Bloocube Admin</span>
+              <span className="ml-2 text-xl font-bold text-white hidden sm:inline">Bloocube Admin</span>
             </div>
             
             {/* Desktop navigation */}
@@ -255,7 +255,7 @@ export default function Navbar() {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Notifications */}
             <div className="relative">
               <button 
@@ -273,7 +273,7 @@ export default function Navbar() {
 
               {/* Notification Dropdown */}
               {showNotifications && (
-                <div className="notification-dropdown absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50">
+                <div className="notification-dropdown absolute mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 right-4 left-4 md:left-auto md:right-0 w-auto md:w-80 max-w-[calc(100vw-2rem)] md:max-w-none">
                   <div className="p-4 border-b border-slate-700">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-white">Notifications</h3>
@@ -296,7 +296,7 @@ export default function Navbar() {
                     </div>
                   </div>
 
-                  <div className="max-h-96 overflow-y-auto">
+                  <div className="max-h-[75vh] overflow-y-auto">
                     {notificationsLoading ? (
                       <div className="p-4 text-center">
                         <div className="animate-spin w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full mx-auto mb-2"></div>
