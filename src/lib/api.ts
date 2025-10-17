@@ -1,5 +1,5 @@
 export const adminConfig = {
-  apiUrl: process.env.NEXT_PUBLIC_ADMIN_API_URL,
+  apiUrl: process.env.NEXT_PUBLIC_ADMIN_API_URL || 'http://localhost:5000',
 };
 
 function getToken(): string | null {
@@ -177,10 +177,25 @@ export const adminApi = {
     apiRequest<{ success: boolean; data: any }>(`/api/notifications/stats`),
 
   // Announcements
-  createAnnouncement: (payload: { title: string; message: string; targetRoles?: string[]; priority?: string; data?: any; actions?: any[]; expiresAt?: string }) =>
-    apiRequest<{ success: boolean; message: string; data: { notificationsCreated: number; targetRoles: string[]; announcement: any } }>(`/api/notifications/announcement`, { method: 'POST', body: JSON.stringify(payload) }),
+  getAnnouncements: (params?: { page?: number; limit?: number; priority?: string; targetRole?: string; search?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.priority) searchParams.append('priority', params.priority);
+    if (params?.targetRole) searchParams.append('targetRole', params.targetRole);
+    if (params?.search) searchParams.append('search', params.search);
+    
+    const queryString = searchParams.toString();
+    return apiRequest<{ success: boolean; data: { announcements: any[]; total: number; page: number; limit: number; totalPages: number } }>(`/api/notifications/announcements${queryString ? `?${queryString}` : ''}`);
+  },
+  createAnnouncement: (payload: { title: string; message: string; targetRoles?: string[]; priority?: string; data?: any; actions?: any[]; expiresAt?: string; sendEmail?: boolean }) =>
+    apiRequest<{ success: boolean; message: string; data: { notificationsCreated: number; emailsQueued: number; targetUserCount: number; targetRoles: string[]; announcement: any } }>(`/api/notifications/announcement`, { method: 'POST', body: JSON.stringify(payload) }),
   getAnnouncementStats: () =>
-    apiRequest<{ success: boolean; data: any }>(`/api/notifications/announcement-stats`)
+    apiRequest<{ success: boolean; data: any }>(`/api/notifications/announcement-stats`),
+  getEmailQueueStats: () =>
+    apiRequest<{ success: boolean; data: any }>(`/api/notifications/email-queue-stats`),
+  getComprehensiveStats: () =>
+    apiRequest<{ success: boolean; data: { announcements: any; emails: any; summary: any } }>(`/api/notifications/comprehensive-stats`)
 };
 
 

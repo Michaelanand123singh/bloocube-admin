@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Megaphone, Send, Users, Target, AlertCircle, Clock, CheckCircle, X } from 'lucide-react';
+import { Megaphone, Send, Users, Target, AlertCircle, Clock, CheckCircle, X, Mail, MailCheck, MailX, RefreshCw, TrendingUp, Activity } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -12,6 +12,41 @@ interface Announcement {
   priority: string;
   createdAt: string;
   notificationsCreated: number;
+  emailsQueued?: number;
+  emailsSent?: number;
+  emailsFailed?: number;
+}
+
+interface EmailStats {
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+  retrying: number;
+  recent: {
+    last24Hours: number;
+    lastHour: number;
+  };
+  isProcessing: boolean;
+  batchSize: number;
+}
+
+interface ComprehensiveStats {
+  announcements: {
+    total: number;
+    unread: number;
+    priorityBreakdown: Record<string, { total: number; unread: number }>;
+  };
+  emails: EmailStats;
+  summary: {
+    totalAnnouncements: number;
+    totalEmailsQueued: number;
+    emailsSent: number;
+    emailsFailed: number;
+    emailsPending: number;
+    successRate: string;
+  };
 }
 
 export default function AnnouncementsPage() {
@@ -20,21 +55,25 @@ export default function AnnouncementsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [stats, setStats] = useState<ComprehensiveStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: '',
     message: '',
     targetRoles: ['creator', 'brand'],
     priority: 'high',
-    expiresAt: ''
+    expiresAt: '',
+    sendEmail: true
   });
 
   const loadAnnouncements = async () => {
     try {
       setError(null);
       setLoading(true);
-      // For now, we'll simulate loading announcements
-      // In a real implementation, you'd fetch from the backend
-      setAnnouncements([]);
+      const response = await adminApi.getAnnouncements({ page: 1, limit: 50 });
+      if (response.success) {
+        setAnnouncements(response.data.announcements);
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to load announcements');
     } finally {
@@ -42,8 +81,27 @@ export default function AnnouncementsPage() {
     }
   };
 
+  const loadStats = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await adminApi.getComprehensiveStats();
+      if (response.success) {
+        setStats(response.data);
+      }
+    } catch (e: any) {
+      console.error('Failed to load stats:', e);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadAnnouncements();
+    loadStats();
+    
+    // Refresh stats every 30 seconds
+    const interval = setInterval(loadStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const createAnnouncement = async () => {
@@ -59,10 +117,12 @@ export default function AnnouncementsPage() {
           message: '',
           targetRoles: ['creator', 'brand'],
           priority: 'high',
-          expiresAt: ''
+          expiresAt: '',
+          sendEmail: true
         });
         setShowCreate(false);
         await loadAnnouncements();
+        await loadStats(); // Refresh stats after creating announcement
       }
     } catch (e: any) {
       setError(e.message || 'Failed to create announcement');
@@ -112,16 +172,130 @@ export default function AnnouncementsPage() {
                   Announcements
                 </h1>
               </div>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-white flex items-center gap-2 transition-all"
-              >
-                <Send className="w-4 h-4" />
-                Create Announcement
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={loadStats}
+                  disabled={statsLoading}
+                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white flex items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
+                  Refresh Stats
+                </button>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-white flex items-center gap-2 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  Create Announcement
+                </button>
+              </div>
             </div>
             <p className="text-slate-400 text-lg ml-13">Send important messages to creators and brands</p>
           </div>
+
+          {/* Statistics Dashboard */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Total Announcements */}
+              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Total Announcements</p>
+                    <p className="text-2xl font-bold text-white">{stats.summary.totalAnnouncements}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                    <Megaphone className="w-6 h-6 text-blue-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emails Sent */}
+              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Emails Sent</p>
+                    <p className="text-2xl font-bold text-green-400">{stats.summary.emailsSent}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                    <MailCheck className="w-6 h-6 text-green-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emails Failed */}
+              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Emails Failed</p>
+                    <p className="text-2xl font-bold text-red-400">{stats.summary.emailsFailed}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                    <MailX className="w-6 h-6 text-red-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Success Rate */}
+              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Success Rate</p>
+                    <p className="text-2xl font-bold text-orange-400">{stats.summary.successRate}%</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-orange-400" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Email Queue Status */}
+          {stats && (
+            <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Email Queue Status
+                </h3>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  stats.emails.isProcessing 
+                    ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' 
+                    : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                }`}>
+                  {stats.emails.isProcessing ? 'Processing' : 'Idle'}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">{stats.emails.pending}</p>
+                  <p className="text-sm text-slate-400">Pending</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-400">{stats.emails.processing}</p>
+                  <p className="text-sm text-slate-400">Processing</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-400">{stats.emails.completed}</p>
+                  <p className="text-sm text-slate-400">Completed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-red-400">{stats.emails.failed}</p>
+                  <p className="text-sm text-slate-400">Failed</p>
+                </div>
+              </div>
+
+              {stats.emails.retrying > 0 && (
+                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-300 text-sm flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    {stats.emails.retrying} emails are being retried
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error State */}
           {error && (
@@ -282,6 +456,22 @@ export default function AnnouncementsPage() {
                   <option value="high">High</option>
                   <option value="urgent">Urgent</option>
                 </select>
+              </div>
+
+              {/* Email Toggle */}
+              <div>
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newAnnouncement.sendEmail}
+                    onChange={(e) => setNewAnnouncement({ ...newAnnouncement, sendEmail: e.target.checked })}
+                    className="w-4 h-4 text-orange-600 bg-slate-800 border-slate-700 rounded focus:ring-orange-500"
+                  />
+                  <div>
+                    <span className="text-slate-300">Send email notifications</span>
+                    <p className="text-xs text-slate-500">Users will receive both in-app notifications and emails</p>
+                  </div>
+                </label>
               </div>
 
               {/* Expiration Date */}
