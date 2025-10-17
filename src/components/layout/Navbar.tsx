@@ -61,6 +61,7 @@ const navigation: NavigationItem[] = [
   { name: 'Users', href: '/users', icon: Users },
   { name: 'Campaigns', href: '/campaigns', icon: FileText },
   { name: 'Posts', href: '/posts', icon: FileText },
+  { name: 'Announcements', href: '/announcements', icon: Bell },
   { name: 'Logs', href: '/logs', icon: Activity },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

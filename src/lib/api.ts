@@ -174,7 +174,13 @@ export const adminApi = {
   createNotification: (payload: { title: string; message: string; type: string; recipient: string; priority?: string; data?: any; relatedResource?: any; actions?: any[]; expiresAt?: string }) =>
     apiRequest<{ success: boolean; data: { notification: any } }>(`/api/notifications`, { method: 'POST', body: JSON.stringify(payload) }),
   getNotificationStats: () =>
-    apiRequest<{ success: boolean; data: any }>(`/api/notifications/stats`)
+    apiRequest<{ success: boolean; data: any }>(`/api/notifications/stats`),
+
+  // Announcements
+  createAnnouncement: (payload: { title: string; message: string; targetRoles?: string[]; priority?: string; data?: any; actions?: any[]; expiresAt?: string }) =>
+    apiRequest<{ success: boolean; message: string; data: { notificationsCreated: number; targetRoles: string[]; announcement: any } }>(`/api/notifications/announcement`, { method: 'POST', body: JSON.stringify(payload) }),
+  getAnnouncementStats: () =>
+    apiRequest<{ success: boolean; data: any }>(`/api/notifications/announcement-stats`)
 };
 
 
