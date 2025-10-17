@@ -43,6 +43,11 @@ export const adminApi = {
   createUser: (payload: { name: string; email: string; password: string; role: 'creator'|'brand'|'admin' }) =>
     apiRequest<{ success: boolean; data: { user: any } }>(`/api/admin/users`, { method: 'POST', body: JSON.stringify(payload) }),
   deleteUser: (id: string) => apiRequest<{ success: boolean; data: { id: string } }>(`/api/admin/users/${id}`, { method: 'DELETE' }),
+  changeUserPassword: (id: string, newPassword: string) => 
+    apiRequest<{ success: boolean; message: string; data: { userId: string; userEmail: string; userName: string; changedBy: string; changedAt: string } }>(`/api/admin/users/${id}/password`, { 
+      method: 'PUT', 
+      body: JSON.stringify({ newPassword }) 
+    }),
   getUserPosts: (userId: string, params?: { page?: number; limit?: number; status?: string; platform?: string; search?: string; sort?: string }) => {
     const search = new URLSearchParams();
     if (params?.page) search.set('page', String(params.page));

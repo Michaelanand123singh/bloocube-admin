@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { Users, Search, Filter, RefreshCw, UserCheck, UserX, Mail, Calendar, Plus, Trash2, X } from 'lucide-react';
+import { Users, Search, Filter, RefreshCw, UserCheck, UserX, Mail, Calendar, Plus, Trash2, X, Key, Eye, EyeOff } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 
@@ -25,6 +25,12 @@ export default function UsersPage(){
   const [showCreate, setShowCreate] = useState(false);
   const [newUser, setNewUser] = useState<{ name: string; email: string; password: string; role: 'creator' | 'brand' | 'admin' }>({ name: '', email: '', password: '', role: 'creator' });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordChangeUser, setPasswordChangeUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const loadUsers = async () => {
     try {
@@ -80,6 +86,49 @@ export default function UsersPage(){
     } catch (e: any) {
       setError(e.message || 'Failed to delete user');
     }
+  };
+
+  const changePassword = async () => {
+    if (!passwordChangeUser) return;
+    
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      setError(null);
+      setChangingPassword(true);
+      const response = await adminApi.changeUserPassword(passwordChangeUser._id, newPassword);
+      
+      // Reset form
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPasswordChange(false);
+      setPasswordChangeUser(null);
+      
+      // Show success message
+      setError(null);
+      alert(`Password changed successfully for ${response.data.userName} (${response.data.userEmail})`);
+      
+    } catch (e: any) {
+      setError(e.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const openPasswordChange = (user: User) => {
+    setPasswordChangeUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordChange(true);
+    setError(null);
   };
 
   // Filter users based on search and filters
@@ -268,6 +317,14 @@ export default function UsersPage(){
                             {user.isActive ? 'Deactivate' : 'Activate'}
                           </button>
                           <button
+                            onClick={() => openPasswordChange(user)}
+                            className="px-3 py-2 text-xs font-medium rounded-lg transition-all bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border border-blue-500/30 flex items-center gap-1"
+                            title="Change password"
+                          >
+                            <Key className="w-3 h-3" />
+                            Password
+                          </button>
+                          <button
                             onClick={() => deleteUser(user._id)}
                             className="px-3 py-2 text-xs font-medium rounded-lg transition-all bg-slate-700/20 text-slate-300 hover:bg-slate-700/30 border border-slate-600/30 flex items-center gap-1"
                             title="Delete user"
@@ -397,6 +454,103 @@ export default function UsersPage(){
                 <button onClick={() => setShowCreate(false)} disabled={creating} className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</button>
                 <button onClick={createUser} disabled={creating || !newUser.name || !newUser.email || !newUser.password} className="px-4 py-2 rounded-lg bg-violet-600 text-white disabled:opacity-50">
                   {creating ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Change Modal */}
+      {showPasswordChange && passwordChangeUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={() => !changingPassword && setShowPasswordChange(false)} />
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+                  <Key className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Change Password</h2>
+                  <div className="text-slate-400 text-sm">{passwordChangeUser.name} ({passwordChangeUser.email})</div>
+                </div>
+              </div>
+              <button 
+                onClick={() => !changingPassword && setShowPasswordChange(false)} 
+                className="p-2 text-slate-400 hover:text-white"
+                disabled={changingPassword}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full px-3 py-2 pr-10 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500/50"
+                    disabled={changingPassword}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+                    disabled={changingPassword}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Confirm Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500/50"
+                  disabled={changingPassword}
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-950/50 border border-red-500/50 rounded-lg p-3">
+                  <p className="text-red-300 text-sm">{error}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-4">
+                <button 
+                  onClick={() => setShowPasswordChange(false)} 
+                  disabled={changingPassword}
+                  className="px-4 py-2 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={changePassword} 
+                  disabled={changingPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {changingPassword ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      Changing...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="w-4 h-4" />
+                      Change Password
+                    </>
+                  )}
                 </button>
               </div>
             </div>
