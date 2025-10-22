@@ -21,7 +21,7 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-import { adminApi } from '@/lib/api';
+import { adminApi, adminConfig } from '@/lib/api';
 
 interface NavigationItem {
   name: string;
@@ -61,7 +61,6 @@ const navigation: NavigationItem[] = [
   { name: 'Users', href: '/users', icon: Users },
   { name: 'Campaigns', href: '/campaigns', icon: FileText },
   { name: 'Posts', href: '/posts', icon: FileText },
-  { name: 'Announcements', href: '/announcements', icon: Bell },
   { name: 'Logs', href: '/logs', icon: Activity },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
@@ -79,22 +78,21 @@ export default function Navbar() {
   useEffect(() => {
     // Check if we're in the browser environment before accessing localStorage
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      if (token) {
+      const userData = localStorage.getItem('user');
+      if (userData) {
         try {
-          // More robust JWT decoding with error handling
-          const payload = JSON.parse(atob(token.split('.')[1]));
+          const user = JSON.parse(userData);
           setUser({ 
-            name: payload.name || 'Admin', 
-            email: payload.email || 'admin@bloocube.com' 
+            name: user.name || 'Admin', 
+            email: user.email || 'admin@bloocube.com' 
           });
         } catch (e) {
-          console.error('Error decoding token:', e);
-          // Set default user if token is invalid
+          console.error('Error parsing user data:', e);
+          // Set default user if user data is invalid
           setUser({ name: 'Admin', email: 'admin@bloocube.com' });
         }
       } else {
-        // Set default user if no token exists
+        // Set default user if no user data exists
         setUser({ name: 'Admin', email: 'admin@bloocube.com' });
       }
     }
@@ -127,11 +125,23 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+  const handleLogout = async () => {
+    try {
+      // Call logout API to clear cookies
+      await fetch(`${adminConfig.apiUrl}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+    } finally {
+      // Clear local storage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+      }
+      router.push('/login');
     }
-    router.push('/login');
   };
 
   // Notification functions

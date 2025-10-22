@@ -15,15 +15,15 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
     const isLoginPage = pathname === '/login';
     
-    if (!token && !isLoginPage) {
+    if (!userData && !isLoginPage) {
       router.push('/login');
       return;
     }
     
-    if (token) {
+    if (userData) {
       setIsAuthenticated(true);
     }
     

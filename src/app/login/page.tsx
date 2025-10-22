@@ -17,6 +17,7 @@ function LoginPageInner(){
       const res = await fetch(`${adminConfig.apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies in the request
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
@@ -26,7 +27,8 @@ function LoginPageInner(){
       if (data.data?.user?.role !== 'admin') {
         throw new Error('Access denied: not an admin');
       }
-      localStorage.setItem('token', data.data.tokens.accessToken);
+      // Tokens are now in HttpOnly cookies, so we don't need to store them in localStorage
+      // Just store the user data
       localStorage.setItem('user', JSON.stringify(data.data.user));
       const nextPath = (searchParams.get('next') || '/dashboard') as any;
       router.replace(nextPath);

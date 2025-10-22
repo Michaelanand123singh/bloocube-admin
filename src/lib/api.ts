@@ -8,12 +8,11 @@ function getToken(): string | null {
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
   const res = await fetch(`${adminConfig.apiUrl}${path}`, {
     ...init,
+    credentials: 'include', // Include cookies for authentication
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.headers || {}),
     },
     cache: 'no-store',
