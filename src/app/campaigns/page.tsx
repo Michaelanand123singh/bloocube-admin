@@ -71,7 +71,9 @@ export default function CampaignsPage() {
                     <td className="px-4 py-3 text-xs">
                       <span className="px-2 py-1 rounded bg-slate-800 text-slate-300">{c.status || 'unknown'}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm">{c.budget ? `$${c.budget}` : '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {c.budget ? `₹${c.budget.toLocaleString('en-IN')}` : '-'}
+                    </td>
                     <td className="px-4 py-3 text-sm">{c.createdAt ? new Date(c.createdAt).toLocaleString() : '-'}</td>
                   </tr>
                 ))}
@@ -101,7 +103,9 @@ export default function CampaignsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
                 <div className="text-slate-400 text-xs mb-2">Budget</div>
-                <div className="text-lg font-semibold">{selected.budget ? `$${selected.budget}` : '—'}</div>
+                <div className="text-lg font-semibold">
+                  {selected.budget ? `₹${selected.budget.toLocaleString('en-IN')}` : '—'}
+                </div>
               </div>
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
                 <div className="text-slate-400 text-xs mb-2">Created</div>

@@ -1,33 +1,20 @@
 "use client";
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
-  Activity, 
-  Settings, 
+  Activity,
   LogOut,
-  Menu,
-  X,
   Bell,
   User,
   Check,
   Trash2,
-  MoreVertical,
+  X,
   AlertCircle,
   Info,
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
 import { adminApi, adminConfig } from '@/lib/api';
-
-interface NavigationItem {
-  name: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
 
 interface UserData {
   name: string;
@@ -56,23 +43,12 @@ interface Notification {
   }>;
 }
 
-const navigation: NavigationItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Users', href: '/users', icon: Users },
-  { name: 'Campaigns', href: '/campaigns', icon: FileText },
-  { name: 'Posts', href: '/posts', icon: FileText },
-  { name: 'Logs', href: '/logs', icon: Activity },
-  { name: 'Settings', href: '/settings', icon: Settings },
-];
-
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
@@ -230,53 +206,39 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/50 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/50 shadow-lg shadow-black/10">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and main nav */}
           <div className="flex items-center">
-            <div className="flex-shrink-0 flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
+            <div className="flex-shrink-0 flex items-center gap-3">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl blur opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative w-9 h-9 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30">
+                  <Activity className="w-5 h-5 text-white" />
+                </div>
               </div>
-              <span className="ml-2 text-xl font-bold text-white hidden sm:inline">Bloocube Admin</span>
-            </div>
-            
-            {/* Desktop navigation */}
-            <div className="hidden md:ml-8 md:flex md:space-x-1">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href as any} // Fix: Type assertion to resolve the type conflict
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                      isActive
-                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.name}
-                  </Link>
-                );
-              })}
+              <div className="hidden sm:block">
+                <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+                  Bloocube Admin
+                </span>
+                <span className="ml-2 text-xs text-slate-500 font-medium">Enterprise</span>
+              </div>
             </div>
           </div>
 
           {/* Right side */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* Notifications */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all relative"
+                className="relative p-2.5 text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-lg transition-all duration-200 border border-transparent hover:border-slate-700/50 focus-visible-ring"
                 aria-label="Notifications"
               >
                 <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center shadow-lg shadow-red-500/30 border-2 border-slate-900">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
@@ -420,21 +382,24 @@ export default function Navbar() {
             </div>
 
             {/* User menu */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 pl-3 border-l border-slate-800/50">
               <div className="hidden sm:block text-right">
-                <div className="text-sm font-medium text-white">
+                <div className="text-sm font-semibold text-white">
                   {user?.name || 'Admin'}
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-slate-500 font-medium">
                   {user?.email || 'admin@bloocube.com'}
                 </div>
               </div>
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-white" />
+              <div className="relative group">
+                <div className="w-9 h-9 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center border-2 border-slate-700/50 group-hover:border-slate-600 transition-colors shadow-md">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900"></div>
               </div>
               <button
                 onClick={handleLogout}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                className="p-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200 border border-transparent hover:border-red-500/20 focus-visible-ring"
                 title="Logout"
                 aria-label="Logout"
               >
@@ -442,52 +407,8 @@ export default function Navbar() {
               </button>
             </div>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
-              aria-label="Toggle menu"
-              aria-expanded={isOpen}
-            >
-              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
-
-        {/* Mobile navigation */}
-        {isOpen && (
-          <div className="md:hidden">
-            {/* Backdrop */}
-            <div className="fixed inset-0 top-16 bg-black/50" onClick={() => setIsOpen(false)} />
-            {/* Panel */}
-            <div className="fixed top-16 inset-x-0 z-50 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800/50">
-              <div className="max-h-[75vh] overflow-y-auto py-3">
-                <div className="px-4 space-y-1" role="menu" aria-label="Mobile menu">
-                  {navigation.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href as any}
-                        onClick={() => setIsOpen(false)}
-                        className={`w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-3 ${
-                          isActive
-                            ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                            : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                        }`}
-                        role="menuitem"
-                      >
-                        <Icon className="w-4 h-4" />
-                        <span className="truncate">{item.name}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );

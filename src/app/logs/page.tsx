@@ -26,6 +26,7 @@ export default function LogsPage(){
   const [intervalMs, setIntervalMs] = useState(10000);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [pagination, setPagination] = useState<{ page: number; limit: number; total: number; totalPages: number; hasNextPage: boolean; hasPrevPage: boolean } | null>(null);
   const [timeframe, setTimeframe] = useState<'1h'|'24h'|'7d'|'all'>('24h');
   const [activeTab, setActiveTab] = useState<'system'|'ai'>('system');
   const [aiLogs, setAiLogs] = useState<any[]>([]);
@@ -35,15 +36,25 @@ export default function LogsPage(){
     try {
       setError(null);
       setLoading(true);
-      const response = await adminApi.getLogs(limit, { level: filterLevel || undefined, service: activeTab === 'system' ? (filterService || undefined) : undefined });
+      const response = await adminApi.getLogs(limit, { 
+        page,
+        level: filterLevel || undefined, 
+        service: activeTab === 'system' ? (filterService || undefined) : undefined 
+      });
       // Transform the response to match our interface
       const logEntries: LogEntry[] = Array.isArray((response as any).data) 
         ? (response as any).data 
         : (response as any).data?.logs || [];
       setLogs(logEntries);
+      
+      // Update pagination metadata
+      if ((response as any).pagination) {
+        setPagination((response as any).pagination);
+      }
+      
       // Also fetch AI logs for AI tab (best effort)
       try {
-        const ai: any = await adminApi.getAIProviderLogs({ limit });
+        const ai: any = await adminApi.getAIProviderLogs({ limit, offset: (page - 1) * limit });
         const list = (ai?.data?.logs || ai?.logs || []);
         setAiLogs(list);
       } catch (_) {}
@@ -55,13 +66,22 @@ export default function LogsPage(){
     }
   };
 
+  // Reset to page 1 when filters change (but not on initial load)
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterLevel, filterService, timeframe, limit]);
+
   useEffect(() => {
     loadLogs();
     const interval = setInterval(() => {
-      if (autoRefresh) loadLogs();
+      if (autoRefresh) {
+        loadLogs();
+      }
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [autoRefresh, intervalMs, limit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, intervalMs, limit, page, filterLevel, filterService, activeTab]);
 
   const withinTimeframe = (ts: string) => {
     if (timeframe === 'all') return true;
@@ -71,19 +91,18 @@ export default function LogsPage(){
     return now - t <= delta;
   };
 
-  // Filter logs based on search and filters
+  // Filter logs based on search and timeframe (server handles level/service filters)
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.action?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLevel = !filterLevel || log.level === filterLevel;
-    const matchesService = !filterService || log.service === filterService;
     const matchesTime = withinTimeframe(log.timestamp);
     
-    return matchesSearch && matchesLevel && matchesService && matchesTime;
+    return matchesSearch && matchesTime;
   });
 
-  const pagedLogs = filteredLogs.slice((page - 1) * limit, (page - 1) * limit + limit);
+  // For display, use filtered logs (client-side search filtering)
+  const displayLogs = filteredLogs;
 
   const getLogIcon = (level: string) => {
     switch (level?.toLowerCase()) {
@@ -118,7 +137,7 @@ export default function LogsPage(){
   };
 
   const exportLogs = () => {
-    const dataStr = JSON.stringify(filteredLogs, null, 2);
+    const dataStr = JSON.stringify(displayLogs, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
@@ -234,11 +253,25 @@ export default function LogsPage(){
               {/* Results Count */}
               <div className="flex items-center text-slate-400">
                 <Filter className="w-4 h-4 mr-2" />
-                {filteredLogs.length} of {logs.length} logs
+                {pagination ? (
+                  <>
+                    Showing {displayLogs.length} of {pagination.total} logs
+                    {pagination.totalPages > 1 && ` (Page ${pagination.page} of ${pagination.totalPages})`}
+                  </>
+                ) : (
+                  `${displayLogs.length} logs`
+                )}
               </div>
 
               {/* Timeframe */}
-              <select value={timeframe} onChange={(e) => { setPage(1); setTimeframe(e.target.value as any); }} className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50">
+              <select 
+                value={timeframe} 
+                onChange={(e) => { 
+                  setPage(1); 
+                  setTimeframe(e.target.value as any); 
+                }} 
+                className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50"
+              >
                 <option value="1h">Last 1h</option>
                 <option value="24h">Last 24h</option>
                 <option value="7d">Last 7d</option>
@@ -246,7 +279,14 @@ export default function LogsPage(){
               </select>
 
               {/* Page Size */}
-              <select value={limit} onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value)); }} className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50">
+              <select 
+                value={limit} 
+                onChange={(e) => { 
+                  setPage(1); 
+                  setLimit(parseInt(e.target.value)); 
+                }} 
+                className="px-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white focus:outline-none focus:border-violet-500/50"
+              >
                 {[20,50,100,200].map(n => <option key={n} value={n}>{n}/page</option>)}
               </select>
             </div>
@@ -261,14 +301,14 @@ export default function LogsPage(){
               </div>
             ) : (
               <div className="max-h-96 overflow-y-auto">
-                {(activeTab === 'system' ? filteredLogs : aiLogs).length === 0 ? (
+                {(activeTab === 'system' ? displayLogs : aiLogs).length === 0 ? (
                   <div className="p-8 text-center">
                     <Activity className="w-12 h-12 text-slate-600 mx-auto mb-4" />
                     <p className="text-slate-400">No logs found</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-800/50">
-                    {(activeTab === 'system' ? pagedLogs : aiLogs.slice((page-1)*limit, (page-1)*limit+limit)).map((log: any, index: number) => (
+                    {(activeTab === 'system' ? displayLogs : aiLogs.slice((page-1)*limit, (page-1)*limit+limit)).map((log: any, index: number) => (
                       <div key={index} className={`p-4 border-l-4 ${getLogColor(log.level || log.status)} hover:bg-slate-800/20 transition-colors`}>
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1">
@@ -314,11 +354,90 @@ export default function LogsPage(){
 
           {/* Pagination footer */}
           <div className="mt-3 text-sm text-slate-400 flex items-center justify-between">
-            <div>Page {page}</div>
+            <div>
+              {pagination ? (
+                <>
+                  Page {pagination.page} of {pagination.totalPages} 
+                  {pagination.total > 0 && (
+                    <span className="ml-2">
+                      ({pagination.total} total {pagination.total === 1 ? 'log' : 'logs'})
+                    </span>
+                  )}
+                </>
+              ) : (
+                `Page ${page}`
+              )}
+            </div>
             <div className="flex items-center gap-3">
-              <button onClick={() => setPage(p => Math.max(1, p-1))} className="px-3 py-2 rounded-lg border border-slate-700 disabled:opacity-50" disabled={page <= 1}>Prev</button>
-              <button onClick={() => setPage(p => p+1)} className="px-3 py-2 rounded-lg border border-slate-700">Next</button>
-              <select value={intervalMs} onChange={(e) => setIntervalMs(parseInt(e.target.value))} className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-300">
+              {activeTab === 'system' && pagination ? (
+                <>
+                  <button 
+                    onClick={() => setPage(p => Math.max(1, p-1))} 
+                    className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" 
+                    disabled={!pagination.hasPrevPage}
+                  >
+                    Prev
+                  </button>
+                  {pagination.totalPages > 1 && (
+                    <div className="text-slate-400">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (pagination.page <= 3) {
+                          pageNum = i + 1;
+                        } else if (pagination.page >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = pagination.page - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setPage(pageNum)}
+                            className={`px-2 py-1 mx-1 rounded ${
+                              pageNum === pagination.page
+                                ? 'bg-violet-500 text-white'
+                                : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50'
+                            } transition-colors`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => setPage(p => p+1)} 
+                    className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" 
+                    disabled={!pagination.hasNextPage}
+                  >
+                    Next
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setPage(p => Math.max(1, p-1))} 
+                    className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-800/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" 
+                    disabled={page <= 1}
+                  >
+                    Prev
+                  </button>
+                  <button 
+                    onClick={() => setPage(p => p+1)} 
+                    className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-800/50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </>
+              )}
+              <select 
+                value={intervalMs} 
+                onChange={(e) => setIntervalMs(parseInt(e.target.value))} 
+                className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-300"
+              >
                 <option value={5000}>5s</option>
                 <option value={10000}>10s</option>
                 <option value={30000}>30s</option>
