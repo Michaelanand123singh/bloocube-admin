@@ -14,7 +14,7 @@ function LoginPageInner(){
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch(`${adminConfig.apiUrl}/api/auth/login`, {
+      const res = await fetch(`${adminConfig.apiUrl}/api/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', // Include cookies in the request
