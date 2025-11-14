@@ -146,6 +146,7 @@ export default function LogsPage(){
     link.click();
     URL.revokeObjectURL(url);
   };
+const pagedLogs = filteredLogs.slice((page - 1) * limit, page * limit);
 
   return (
     <Layout>
@@ -334,6 +335,7 @@ export default function LogsPage(){
             </div>
           ) : (
             <div className="divide-y divide-slate-800/50">
+
               {(activeTab === 'system'
                 ? pagedLogs
                 : aiLogs.slice((page - 1) * limit, (page - 1) * limit + limit)
