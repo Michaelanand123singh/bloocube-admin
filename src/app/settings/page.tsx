@@ -124,92 +124,96 @@ export default function SettingsPage(){
 
   return (
     <Layout>
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-10">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center">
-                  <Settings className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                  System Settings
-                </h1>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowCreateUser(true)}
-                  className="px-4 py-2 bg-slate-800/60 hover:bg-slate-800 text-white rounded-lg transition-all flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create User
-                </button>
-                <button
-                  onClick={loadSettings}
-                  disabled={loading}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all disabled:opacity-50"
-                  title="Refresh settings"
-                >
-                  <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
-                <button
-                  onClick={saveSettings}
-                  disabled={saving}
-                  className="px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-lg transition-all disabled:opacity-50 flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? 'Saving...' : 'Save Settings'}
-                </button>
-              </div>
-            </div>
-            <p className="text-slate-400 text-lg ml-13">Manage system configuration and API keys</p>
+      <main className="min-h-screen p-4 sm:p-6 md:p-10">
+  <div className="max-w-7xl mx-auto">
+    {/* Header */}
+    <div className="mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3  pb-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center">
+            <Settings className="w-6 h-6 text-white" />
           </div>
+          <h1 className="text-3xl sm:text-2xl font-bold ">
+            System Settings
+          </h1>
+        </div>
 
-          {/* Status Messages */}
-          {error && (
-            <div className="bg-red-950/50 border border-red-500/50 rounded-2xl p-4 mb-6 backdrop-blur-sm flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <p className="text-red-300">{error}</p>
-            </div>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowCreateUser(true)}
+            className="px-4 py-2 bg-slate-800/60 hover:bg-slate-800 text-white rounded-lg transition-all flex items-center gap-2 text-sm sm:text-base"
+          >
+            <Plus className="w-4 h-4" />
+            Create User
+          </button>
+          <button
+            onClick={loadSettings}
+            disabled={loading}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all disabled:opacity-50"
+            title="Refresh settings"
+          >
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button
+            onClick={saveSettings}
+            disabled={saving}
+            className="px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-lg transition-all disabled:opacity-50 flex items-center gap-2 text-sm sm:text-base"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
 
-          {success && (
-            <div className="bg-emerald-950/50 border border-emerald-500/50 rounded-2xl p-4 mb-6 backdrop-blur-sm flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
-              <p className="text-emerald-300">{success}</p>
-            </div>
-          )}
+      <p className="text-slate-400 text-base sm:text-lg">
+        Manage system configuration and API keys
+      </p>
+    </div>
 
-          {/* Tabs */}
-          <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 mb-6">
-            <div className="flex flex-wrap gap-2 mb-6">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                      activeTab === tab.id
-                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+    {/* Status Messages */}
+    {error && (
+      <div className="bg-red-950/50 border border-red-500/50 rounded-2xl p-4 mb-6 backdrop-blur-sm flex items-start sm:items-center gap-2 text-sm sm:text-base">
+        <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+        <p className="text-red-300">{error}</p>
+      </div>
+    )}
 
-            {/* Tab Content */}
-            {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-slate-400">Loading settings...</p>
-              </div>
-            ) : (
+    {success && (
+      <div className="bg-emerald-950/50 border border-emerald-500/50 rounded-2xl p-4 mb-6 backdrop-blur-sm flex items-start sm:items-center gap-2 text-sm sm:text-base">
+        <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+        <p className="text-emerald-300">{success}</p>
+      </div>
+    )}
+
+    {/* Tabs */}
+    <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-sm p-4 sm:p-6 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      {loading ? (
+        <div className="p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-400">Loading settings...</p>
+        </div>
+      ) : (
               <div className="space-y-6">
                 {/* API Keys Tab */}
                 {activeTab === 'api' && (
