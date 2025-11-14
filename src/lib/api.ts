@@ -91,13 +91,14 @@ export const adminApi = {
     apiRequest<{ success: boolean; data: { campaign: any; analytics: any; posts: any[] } }>(`/api/campaigns/${id}/analytics`),
 
   // Logs
-  getLogs: (limit: number = 50, opts?: { level?: string; service?: string }) => {
+  getLogs: (limit: number = 50, opts?: { level?: string; service?: string; page?: number }) => {
     const search = new URLSearchParams();
     search.set('limit', String(limit));
+    if (opts?.page) search.set('page', String(opts.page));
     if (opts?.level) search.set('level', opts.level);
     if (opts?.service) search.set('service', opts.service);
     const qs = search.toString();
-    return apiRequest<{ success: boolean; data: any[] }>(`/api/admin/logs?${qs}`);
+    return apiRequest<{ success: boolean; data: any[]; pagination?: { page: number; limit: number; total: number; totalPages: number; hasNextPage: boolean; hasPrevPage: boolean } }>(`/api/admin/logs?${qs}`);
   },
 
   // Settings

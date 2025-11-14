@@ -26,6 +26,7 @@ export default function LogsPage(){
   const [intervalMs, setIntervalMs] = useState(10000);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
+  const [pagination, setPagination] = useState<{ page: number; limit: number; total: number; totalPages: number; hasNextPage: boolean; hasPrevPage: boolean } | null>(null);
   const [timeframe, setTimeframe] = useState<'1h'|'24h'|'7d'|'all'>('24h');
   const [activeTab, setActiveTab] = useState<'system'|'ai'>('system');
   const [aiLogs, setAiLogs] = useState<any[]>([]);
@@ -35,15 +36,25 @@ export default function LogsPage(){
     try {
       setError(null);
       setLoading(true);
-      const response = await adminApi.getLogs(limit, { level: filterLevel || undefined, service: activeTab === 'system' ? (filterService || undefined) : undefined });
+      const response = await adminApi.getLogs(limit, { 
+        page,
+        level: filterLevel || undefined, 
+        service: activeTab === 'system' ? (filterService || undefined) : undefined 
+      });
       // Transform the response to match our interface
       const logEntries: LogEntry[] = Array.isArray((response as any).data) 
         ? (response as any).data 
         : (response as any).data?.logs || [];
       setLogs(logEntries);
+      
+      // Update pagination metadata
+      if ((response as any).pagination) {
+        setPagination((response as any).pagination);
+      }
+      
       // Also fetch AI logs for AI tab (best effort)
       try {
-        const ai: any = await adminApi.getAIProviderLogs({ limit });
+        const ai: any = await adminApi.getAIProviderLogs({ limit, offset: (page - 1) * limit });
         const list = (ai?.data?.logs || ai?.logs || []);
         setAiLogs(list);
       } catch (_) {}
@@ -55,13 +66,22 @@ export default function LogsPage(){
     }
   };
 
+  // Reset to page 1 when filters change (but not on initial load)
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterLevel, filterService, timeframe, limit]);
+
   useEffect(() => {
     loadLogs();
     const interval = setInterval(() => {
-      if (autoRefresh) loadLogs();
+      if (autoRefresh) {
+        loadLogs();
+      }
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [autoRefresh, intervalMs, limit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, intervalMs, limit, page, filterLevel, filterService, activeTab]);
 
   const withinTimeframe = (ts: string) => {
     if (timeframe === 'all') return true;
@@ -71,19 +91,18 @@ export default function LogsPage(){
     return now - t <= delta;
   };
 
-  // Filter logs based on search and filters
+  // Filter logs based on search and timeframe (server handles level/service filters)
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.service?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          log.action?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLevel = !filterLevel || log.level === filterLevel;
-    const matchesService = !filterService || log.service === filterService;
     const matchesTime = withinTimeframe(log.timestamp);
     
-    return matchesSearch && matchesLevel && matchesService && matchesTime;
+    return matchesSearch && matchesTime;
   });
 
-  const pagedLogs = filteredLogs.slice((page - 1) * limit, (page - 1) * limit + limit);
+  // For display, use filtered logs (client-side search filtering)
+  const displayLogs = filteredLogs;
 
   const getLogIcon = (level: string) => {
     switch (level?.toLowerCase()) {
@@ -118,7 +137,7 @@ export default function LogsPage(){
   };
 
   const exportLogs = () => {
-    const dataStr = JSON.stringify(filteredLogs, null, 2);
+    const dataStr = JSON.stringify(displayLogs, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');

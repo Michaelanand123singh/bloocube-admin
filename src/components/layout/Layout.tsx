@@ -31,15 +31,25 @@ export default function Layout({ children }: LayoutProps) {
     setIsLoading(false);
   }, [pathname, router]);
 
-  // Show loading state
+  // Professional loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <div className="w-4 h-4 bg-white rounded-sm" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="relative">
+            <div className="w-16 h-16 mx-auto mb-6 relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl animate-pulse shadow-lg shadow-violet-500/30"></div>
+              <div className="absolute inset-2 bg-slate-950 rounded-xl flex items-center justify-center">
+                <div className="w-6 h-6 bg-gradient-to-br from-violet-400 to-purple-500 rounded-lg"></div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-center">
+              <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
           </div>
-          <p className="text-slate-400">Loading...</p>
+          <p className="mt-6 text-slate-400 text-sm font-medium">Loading admin panel...</p>
         </div>
       </div>
     );

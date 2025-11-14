@@ -113,7 +113,7 @@ const [showUserMenu, setShowUserMenu] = useState(false);
   const handleLogout = async () => {
     try {
       // Call logout API to clear cookies
-      await fetch(`${adminConfig.apiUrl}/api/auth/logout`, {
+      await fetch(`${adminConfig.apiUrl}/api/admin/auth/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }

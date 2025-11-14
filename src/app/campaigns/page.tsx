@@ -244,19 +244,12 @@ export default function CampaignsPage() {
       {/* ANALYTICS + REQUIREMENTS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* analytics */}
-        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
-          <div className="text-slate-400 text-xs mb-2">Analytics</div>
-
-          {detailsLoading && (
-            <div className="text-sm text-slate-400">Loading analytics...</div>
-          )}
-
-          {!detailsLoading && details && (
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <div className="text-slate-400">Total Posts</div>
-                <div className="font-semibold">{details.analytics?.totalPosts ?? 0}</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
+                <div className="text-slate-400 text-xs mb-2">Budget</div>
+                <div className="text-lg font-semibold">
+                  {selected.budget ? `₹${selected.budget.toLocaleString('en-IN')}` : '—'}
+                </div>
               </div>
 
               <div>
