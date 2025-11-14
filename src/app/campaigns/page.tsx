@@ -45,7 +45,8 @@ export default function CampaignsPage() {
   };
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-2 sm:px-2 lg:px-2 py-6 text-slate-100">
+      <main>
+        <div className="max-w-7xl mx-auto px-2 sm:px-2 lg:px-2 py-6 text-slate-100">
         <h1 className="text-3xl font-semibold mb-4">Campaigns</h1>
         {loading && <div className="text-sm text-slate-400">Loading...</div>}
         {error && <div className="text-sm text-red-400">{error}</div>}
@@ -128,13 +129,11 @@ export default function CampaignsPage() {
   ))}
 
   {currentCampaigns.length === 0 && (
-    <div className="col-span-full text-center py-10 text-slate-400 border border-slate-800 rounded-2xl">
-      No campaigns found
-    </div>
-            )}
-            
-
-            {/* Pagination Controls */}
+  <div className="col-span-full text-center py-10 text-slate-400 border border-slate-800 rounded-2xl">
+    No campaigns found
+  </div>
+)}
+     {/* Pagination Controls */}
             <div className="w-full flex justify-center items-center">
   {totalPages > 1 && (
     <div className="flex flex-wrap justify-center items-center mt-8 gap-4 text-center">
@@ -158,23 +157,13 @@ export default function CampaignsPage() {
     </div>
   )}
 </div>
-
 </div>
-
         )}
       </div>
+      </main>
       {/* Campaign Details Modal */}
      
-      
-
-
-
-
-
-
-
-
-
+    
       {selected && (
   <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
     {/* background */}
@@ -182,7 +171,6 @@ export default function CampaignsPage() {
       className="absolute inset-0 bg-black/60"
       onClick={() => setSelected(null)}
     />
-
     {/* modal box */}
     <div className="relative bg-slate-900 border border-slate-800 rounded-sm  p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto text-slate-100">
 
@@ -244,12 +232,19 @@ export default function CampaignsPage() {
       {/* ANALYTICS + REQUIREMENTS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4">
-                <div className="text-slate-400 text-xs mb-2">Budget</div>
-                <div className="text-lg font-semibold">
-                  {selected.budget ? `₹${selected.budget.toLocaleString('en-IN')}` : '—'}
-                </div>
+        {/* analytics */}
+        <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
+          <div className="text-slate-400 text-xs mb-2">Analytics</div>
+
+          {detailsLoading && (
+            <div className="text-sm text-slate-400">Loading analytics...</div>
+          )}
+
+          {!detailsLoading && details && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-slate-400">Total Posts</div>
+                <div className="font-semibold">{details.analytics?.totalPosts ?? 0}</div>
               </div>
 
               <div>
@@ -320,7 +315,6 @@ export default function CampaignsPage() {
                   <th className="text-right py-2">Actions</th>
                 </tr>
               </thead>
-
               <tbody>
                 {(details.bids || []).map((b) => (
                   <tr key={b._id} className="border-b border-slate-800">
@@ -493,3 +487,6 @@ export default function CampaignsPage() {
     </Layout>
   );
 }
+
+
+//  complete
