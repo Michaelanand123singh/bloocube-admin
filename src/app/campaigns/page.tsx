@@ -157,9 +157,7 @@ export default function CampaignsPage() {
     </div>
   )}
 </div>
-
 </div>
-
         )}
       </div>
       </main>
@@ -173,7 +171,6 @@ export default function CampaignsPage() {
       className="absolute inset-0 bg-black/60"
       onClick={() => setSelected(null)}
     />
-
     {/* modal box */}
     <div className="relative bg-slate-900 border border-slate-800 rounded-sm  p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto text-slate-100">
 
@@ -318,7 +315,6 @@ export default function CampaignsPage() {
                   <th className="text-right py-2">Actions</th>
                 </tr>
               </thead>
-
               <tbody>
                 {(details.bids || []).map((b) => (
                   <tr key={b._id} className="border-b border-slate-800">
@@ -491,3 +487,6 @@ export default function CampaignsPage() {
     </Layout>
   );
 }
+
+
+//  complete
