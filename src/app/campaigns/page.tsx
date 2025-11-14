@@ -128,11 +128,11 @@ export default function CampaignsPage() {
   ))}
 
   {currentCampaigns.length === 0 && (
-    <div className="col-span-full text-center py-10 text-slate-400 border border-slate-800 rounded-2xl">
-      No campaigns found
-    </div>
-            )}
-            
+  <div className="col-span-full text-center py-10 text-slate-400 border border-slate-800 rounded-2xl">
+    No campaigns found
+  </div>
+)}
+
 
             {/* Pagination Controls */}
             <div className="w-full flex justify-center items-center">
