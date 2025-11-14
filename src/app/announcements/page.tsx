@@ -57,6 +57,8 @@ export default function AnnouncementsPage() {
   const [creating, setCreating] = useState(false);
   const [stats, setStats] = useState<ComprehensiveStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+const [processingHistory, setProcessingHistory] = useState<string[]>([]);
   const [newAnnouncement, setNewAnnouncement] = useState({
     title: '',
     message: '',
@@ -104,32 +106,76 @@ export default function AnnouncementsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const createAnnouncement = async () => {
-    try {
-      setError(null);
-      setCreating(true);
-      
-      const response = await adminApi.createAnnouncement(newAnnouncement);
-      
-      if (response.success) {
-        setNewAnnouncement({
-          title: '',
-          message: '',
-          targetRoles: ['creator', 'brand'],
-          priority: 'high',
-          expiresAt: '',
-          sendEmail: true
-        });
-        setShowCreate(false);
-        await loadAnnouncements();
-        await loadStats(); // Refresh stats after creating announcement
-      }
-    } catch (e: any) {
-      setError(e.message || 'Failed to create announcement');
-    } finally {
-      setCreating(false);
+ const createAnnouncement = async () => {
+  try {
+    setError(null);
+    setCreating(true);
+    setProgress(0);
+
+    // Close modal immediately
+    setShowCreate(false);
+
+    // Add initial log
+    setProcessingHistory(prev => [
+      ...prev,
+      `Announcement "${newAnnouncement.title}" is being processed... ⏳`
+    ]);
+
+    // Progress simulation
+    let simulatedProgress = 0;
+    const interval = setInterval(() => {
+      simulatedProgress += 10;
+      if (simulatedProgress > 90) simulatedProgress = 90; // max until API done
+      setProgress(simulatedProgress);
+    }, 100);
+
+    // API call
+    const response = await adminApi.createAnnouncement(newAnnouncement);
+
+    if (response.success) {
+      setProcessingHistory(prev => [
+        ...prev,
+        `Announcement "${newAnnouncement.title}" queued for sending ✅`
+      ]);
+      setProgress(100);
+
+      // Refresh announcements & stats
+      await loadAnnouncements();
+      await loadStats();
+    } else {
+      throw new Error('Failed to create announcement');
     }
-  };
+
+    clearInterval(interval);
+
+    // Auto-hide card after short delay
+    setTimeout(() => {
+      setProcessingHistory([]);
+      setProgress(0);
+    }, 1000);
+
+    // Reset form
+    setNewAnnouncement({
+      title: '',
+      message: '',
+      targetRoles: ['creator', 'brand'],
+      priority: 'high',
+      expiresAt: '',
+      sendEmail: true
+    });
+
+  } catch (e: any) {
+    setError(e.message || 'Failed to create announcement');
+    setProcessingHistory(prev => [
+      ...prev,
+      `Error creating "${newAnnouncement.title}" ❌`
+    ]);
+    setProgress(0);
+  } finally {
+    setCreating(false);
+  }
+};
+
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -159,211 +205,172 @@ export default function AnnouncementsPage() {
 
   return (
     <Layout>
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-6 md:p-10">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
-                  <Megaphone className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                  Announcements
-                </h1>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={loadStats}
-                  disabled={statsLoading}
-                  className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
-                  Refresh Stats
-                </button>
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-white flex items-center gap-2 transition-all"
-                >
-                  <Send className="w-4 h-4" />
-                  Create Announcement
-                </button>
-              </div>
-            </div>
-            <p className="text-slate-400 text-lg ml-13">Send important messages to creators and brands</p>
+    <main className="min-h-screen  p-4 md:p-10">
+  <div className="max-w-7xl mx-auto">
+    {/* Header */}
+    <div className="mb-6 md:mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4 sm:gap-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
+            <Megaphone className="w-6 h-6 text-white" />
           </div>
+          <h1 className="text-2xl lg:text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+            Announcements
+          </h1>
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <button
+            onClick={loadStats}
+            disabled={statsLoading}
+            className="px-3 py-2 sm:py-3 bg-slate-700 hover:bg-slate-600 rounded-md text-white flex items-center gap-2 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
+            Refresh Stats
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-2 sm:py-3 bg-orange-600 hover:bg-orange-700 rounded-md text-white flex items-center gap-2 transition-all"
+          >
+            <Send className="w-4 h-4" />
+            Create Announcement
+          </button>
+        </div>
+      </div>
+      <p className="text-slate-400 text-base sm:text-lg ml-0 sm:ml-13">Send important messages to creators and brands</p>
+    </div>
 
-          {/* Statistics Dashboard */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {/* Total Announcements */}
-              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-400 text-sm">Total Announcements</p>
-                    <p className="text-2xl font-bold text-white">{stats.summary.totalAnnouncements}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                    <Megaphone className="w-6 h-6 text-blue-400" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Emails Sent */}
-              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-400 text-sm">Emails Sent</p>
-                    <p className="text-2xl font-bold text-green-400">{stats.summary.emailsSent}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
-                    <MailCheck className="w-6 h-6 text-green-400" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Emails Failed */}
-              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-400 text-sm">Emails Failed</p>
-                    <p className="text-2xl font-bold text-red-400">{stats.summary.emailsFailed}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
-                    <MailX className="w-6 h-6 text-red-400" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Success Rate */}
-              <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-slate-400 text-sm">Success Rate</p>
-                    <p className="text-2xl font-bold text-orange-400">{stats.summary.successRate}%</p>
-                  </div>
-                  <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-orange-400" />
-                  </div>
-                </div>
-              </div>
+    {/* Statistics Dashboard */}
+    {stats && (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+        {[
+          { title: 'Total Announcements', value: stats.summary.totalAnnouncements, icon: <Megaphone className="w-6 h-6 text-blue-400" />, bg: 'bg-blue-500/20' },
+          { title: 'Emails Sent', value: stats.summary.emailsSent, icon: <MailCheck className="w-6 h-6 text-green-400" />, bg: 'bg-green-500/20' },
+          { title: 'Emails Failed', value: stats.summary.emailsFailed, icon: <MailX className="w-6 h-6 text-red-400" />, bg: 'bg-red-500/20' },
+          { title: 'Success Rate', value: stats.summary.successRate + '%', icon: <TrendingUp className="w-6 h-6 text-orange-400" />, bg: 'bg-orange-500/20' },
+        ].map((stat, idx) => (
+          <div key={idx} className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-sm p-4 sm:p-6 flex items-center justify-between">
+            <div>
+              <p className="text-slate-400 text-sm sm:text-base">{stat.title}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</p>
             </div>
-          )}
-
-          {/* Email Queue Status */}
-          {stats && (
-            <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  Email Queue Status
-                </h3>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  stats.emails.isProcessing 
-                    ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' 
-                    : 'bg-green-500/20 text-green-300 border border-green-500/30'
-                }`}>
-                  {stats.emails.isProcessing ? 'Processing' : 'Idle'}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-white">{stats.emails.pending}</p>
-                  <p className="text-sm text-slate-400">Pending</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-400">{stats.emails.processing}</p>
-                  <p className="text-sm text-slate-400">Processing</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-400">{stats.emails.completed}</p>
-                  <p className="text-sm text-slate-400">Completed</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-red-400">{stats.emails.failed}</p>
-                  <p className="text-sm text-slate-400">Failed</p>
-                </div>
-              </div>
-
-              {stats.emails.retrying > 0 && (
-                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <p className="text-yellow-300 text-sm flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4" />
-                    {stats.emails.retrying} emails are being retried
-                  </p>
-                </div>
-              )}
+            <div className={`w-12 h-12 ${stat.bg} rounded-xl flex items-center justify-center`}>
+              {stat.icon}
             </div>
-          )}
+          </div>
+        ))}
+      </div>
+    )}
 
-          {/* Error State */}
-          {error && (
-            <div className="bg-red-950/50 border border-red-500/50 rounded-2xl p-4 mb-6 backdrop-blur-sm">
-              <p className="text-red-300">{error}</p>
-            </div>
-          )}
-
-          {/* Announcements List */}
-          <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-2xl overflow-hidden">
-            {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-slate-400">Loading announcements...</p>
-              </div>
-            ) : announcements.length === 0 ? (
-              <div className="p-8 text-center">
-                <Megaphone className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400 mb-4">No announcements yet</p>
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg text-white"
-                >
-                  Create your first announcement
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-800/50">
-                {announcements.map((announcement) => (
-                  <div key={announcement._id} className="p-6 hover:bg-slate-800/30 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-white">{announcement.title}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(announcement.priority)}`}>
-                            {announcement.priority}
-                          </span>
-                        </div>
-                        <p className="text-slate-300 mb-3">{announcement.message}</p>
-                        <div className="flex items-center gap-4 text-sm text-slate-400">
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            <span>Sent to {announcement.notificationsCreated} users</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4" />
-                            <div className="flex gap-1">
-                              {announcement.targetRoles.map((role) => (
-                                <span key={role} className={`px-2 py-1 rounded text-xs ${getTargetRoleColor(role)}`}>
-                                  {role}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            <span>{new Date(announcement.createdAt).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+    {/* Email Queue Status */}
+    {stats && (
+      <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-sm p-4 md:p-6 mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2 sm:gap-0">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Activity className="w-5 h-5" />
+            Email Queue Status
+          </h3>
+          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+            stats.emails.isProcessing 
+              ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' 
+              : 'bg-green-500/20 text-green-300 border border-green-500/30'
+          }`}>
+            {stats.emails.isProcessing ? 'Processing' : 'Idle'}
           </div>
         </div>
-      </main>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 text-center">
+          {[
+            { label: 'Pending', value: stats.emails.pending, color: 'text-white' },
+            { label: 'Processing', value: stats.emails.processing, color: 'text-blue-400' },
+            { label: 'Completed', value: stats.emails.completed, color: 'text-green-400' },
+            { label: 'Failed', value: stats.emails.failed, color: 'text-red-400' },
+          ].map((item, idx) => (
+            <div key={idx}>
+              <p className={`text-2xl sm:text-3xl font-bold ${item.color}`}>{item.value}</p>
+              <p className="text-sm text-slate-400">{item.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {stats.emails.retrying > 0 && (
+          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm">
+            <p className="text-yellow-300 flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" />
+              {stats.emails.retrying} emails are being retried
+            </p>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Error State */}
+    {error && (
+      <div className="bg-red-950/50 border border-red-500/50 rounded-sm p-4 mb-6 backdrop-blur-sm">
+        <p className="text-red-300 text-sm sm:text-base">{error}</p>
+      </div>
+    )}
+
+    {/* Announcements List */}
+    <div className="bg-slate-900/40 backdrop-blur-sm border border-slate-800/50 rounded-sm overflow-hidden">
+      {loading ? (
+        <div className="p-6 sm:p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-400 text-sm sm:text-base">Loading announcements...</p>
+        </div>
+      ) : announcements.length === 0 ? (
+        <div className="p-6 sm:p-8 text-center">
+          <Megaphone className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+          <p className="text-slate-400 mb-4 text-sm sm:text-base">No announcements yet</p>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-2 sm:py-3 bg-orange-600 hover:bg-orange-700 rounded-md text-white text-sm sm:text-base"
+          >
+            Create your first announcement
+          </button>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-800/50">
+          {announcements.map((announcement) => (
+            <div key={announcement._id} className="p-4 sm:p-6 hover:bg-slate-800/30 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-0">
+                <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white">{announcement.title}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs sm:text-sm font-medium border ${getPriorityColor(announcement.priority)}`}>
+                      {announcement.priority}
+                    </span>
+                  </div>
+                  <p className="text-slate-300 mb-3 text-sm sm:text-base">{announcement.message}</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-slate-400">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      <span>Sent to {announcement.notificationsCreated} users</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      <div className="flex gap-1 flex-wrap">
+                        {announcement.targetRoles.map((role) => (
+                          <span key={role} className={`px-2 py-1 rounded text-xs sm:text-sm ${getTargetRoleColor(role)}`}>
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-xs sm:text-sm">{new Date(announcement.createdAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</main>
+
 
       {/* Create Announcement Modal */}
       {showCreate && (
@@ -487,7 +494,7 @@ export default function AnnouncementsPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4">
+              <div className="flex flex-col lg:flex-row items-center justify-end gap-3 pt-4">
                 <button
                   onClick={() => setShowCreate(false)}
                   disabled={creating}
@@ -502,7 +509,7 @@ export default function AnnouncementsPage() {
                 >
                   {creating ? (
                     <>
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
                       Creating...
                     </>
                   ) : (
@@ -517,6 +524,31 @@ export default function AnnouncementsPage() {
           </div>
         </div>
       )}
+      {/* Processing History & Progress Card */}
+{creating || processingHistory.length > 0 ? (
+  <div className="fixed bottom-6 right-4 sm:right-16 left-4 sm:left-auto w-auto sm:w-80 mx-auto sm:mx-0 bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 shadow-lg z-50">
+    <h4 className="text-sm font-semibold text-white mb-2 text-center sm:text-left">Processing History</h4>
+
+    {/* Progress Bar */}
+    {creating && (
+      <div className="w-full bg-slate-700 rounded-full h-2 mb-2 overflow-hidden">
+        <div
+          className="bg-orange-500 h-2 transition-all"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    )}
+
+    {/* History Logs */}
+    <div className="max-h-40 overflow-y-auto space-y-1">
+      {processingHistory.map((log, index) => (
+        <p key={index} className="text-xs text-slate-300">{log}</p>
+      ))}
+    </div>
+  </div>
+) : null}
+
+
     </Layout>
   );
 }
